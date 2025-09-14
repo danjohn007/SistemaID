@@ -48,10 +48,12 @@ RewriteRule ^servicios/?$ index.php?action=servicios [L,QSA]
 RewriteRule ^servicios/nuevo/?$ index.php?action=servicios&subaction=nuevo [L,QSA]
 RewriteRule ^servicios/editar/([0-9]+)/?$ index.php?action=servicios&subaction=editar&id=$1 [L,QSA]
 RewriteRule ^servicios/ver/([0-9]+)/?$ index.php?action=servicios&subaction=ver&id=$1 [L,QSA]
+RewriteRule ^servicios/eliminar/([0-9]+)/?$ index.php?action=servicios&subaction=eliminar&id=$1 [L,QSA]
 
 # Gestión de pagos
 RewriteRule ^pagos/?$ index.php?action=pagos [L,QSA]
 RewriteRule ^pagos/nuevo/?$ index.php?action=pagos&subaction=nuevo [L,QSA]
+RewriteRule ^pagos/registrar/?$ index.php?action=pagos&subaction=nuevo [L,QSA]
 RewriteRule ^pagos/editar/([0-9]+)/?$ index.php?action=pagos&subaction=editar&id=$1 [L,QSA]
 
 # Notificaciones
