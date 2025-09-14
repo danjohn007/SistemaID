@@ -1,0 +1,102 @@
+# Sistema de Control de Servicios Digitales - URL Rewriting
+RewriteEngine On
+
+# Redireccionar a HTTPS (opcional - descomenta si tienes SSL)
+# RewriteCond %{HTTPS} off
+# RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# Bloquear acceso directo a archivos de configuración
+<Files "config.php">
+    Order Allow,Deny
+    Deny from all
+</Files>
+
+<Files "database.php">
+    Order Allow,Deny
+    Deny from all
+</Files>
+
+# Bloquear acceso a archivos SQL
+<FilesMatch "\.(sql)$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# Bloquear acceso a archivos de log
+<FilesMatch "\.(log)$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# URLs amigables
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Rutas principales del sistema
+RewriteRule ^login/?$ index.php?action=login [L,QSA]
+RewriteRule ^logout/?$ index.php?action=logout [L,QSA]
+RewriteRule ^dashboard/?$ index.php?action=dashboard [L,QSA]
+
+# Gestión de clientes
+RewriteRule ^clientes/?$ index.php?action=clientes [L,QSA]
+RewriteRule ^clientes/nuevo/?$ index.php?action=clientes&subaction=nuevo [L,QSA]
+RewriteRule ^clientes/editar/([0-9]+)/?$ index.php?action=clientes&subaction=editar&id=$1 [L,QSA]
+RewriteRule ^clientes/ver/([0-9]+)/?$ index.php?action=clientes&subaction=ver&id=$1 [L,QSA]
+
+# Gestión de servicios
+RewriteRule ^servicios/?$ index.php?action=servicios [L,QSA]
+RewriteRule ^servicios/nuevo/?$ index.php?action=servicios&subaction=nuevo [L,QSA]
+RewriteRule ^servicios/editar/([0-9]+)/?$ index.php?action=servicios&subaction=editar&id=$1 [L,QSA]
+RewriteRule ^servicios/ver/([0-9]+)/?$ index.php?action=servicios&subaction=ver&id=$1 [L,QSA]
+
+# Gestión de pagos
+RewriteRule ^pagos/?$ index.php?action=pagos [L,QSA]
+RewriteRule ^pagos/nuevo/?$ index.php?action=pagos&subaction=nuevo [L,QSA]
+RewriteRule ^pagos/editar/([0-9]+)/?$ index.php?action=pagos&subaction=editar&id=$1 [L,QSA]
+
+# Notificaciones
+RewriteRule ^notificaciones/?$ index.php?action=notificaciones [L,QSA]
+
+# Reportes
+RewriteRule ^reportes/?$ index.php?action=reportes [L,QSA]
+RewriteRule ^reportes/export/([a-z]+)/?$ index.php?action=reportes&subaction=export&type=$1 [L,QSA]
+
+# Configuración
+RewriteRule ^configuracion/?$ index.php?action=configuracion [L,QSA]
+
+# Test de conexión
+RewriteRule ^test/?$ test_connection.php [L,QSA]
+
+# API endpoints
+RewriteRule ^api/([a-z]+)/?$ api.php?endpoint=$1 [L,QSA]
+
+# Configuración de cache y compresión
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/css "access plus 1 month"
+    ExpiresByType application/javascript "access plus 1 month"
+    ExpiresByType image/png "access plus 1 month"
+    ExpiresByType image/jpg "access plus 1 month"
+    ExpiresByType image/jpeg "access plus 1 month"
+    ExpiresByType image/gif "access plus 1 month"
+    ExpiresByType image/ico "access plus 1 month"
+    ExpiresByType image/icon "access plus 1 month"
+    ExpiresByType text/plain "access plus 1 month"
+</IfModule>
+
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/plain
+    AddOutputFilterByType DEFLATE text/html
+    AddOutputFilterByType DEFLATE text/xml
+    AddOutputFilterByType DEFLATE text/css
+    AddOutputFilterByType DEFLATE application/xml
+    AddOutputFilterByType DEFLATE application/xhtml+xml
+    AddOutputFilterByType DEFLATE application/rss+xml
+    AddOutputFilterByType DEFLATE application/javascript
+    AddOutputFilterByType DEFLATE application/x-javascript
+</IfModule>
+
+# Configuración de seguridad
+Header always set X-Content-Type-Options nosniff
+Header always set X-Frame-Options DENY
+Header always set X-XSS-Protection "1; mode=block"
