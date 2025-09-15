@@ -128,7 +128,34 @@ try {
         case 'notificaciones':
             requireAuth();
             $controller = new NotificacionesController();
-            $controller->index();
+            switch ($subaction) {
+                case 'configuracion':
+                    $controller->configuracion();
+                    break;
+                case 'procesar':
+                    $controller->procesar();
+                    break;
+                case 'programar':
+                    $controller->programar();
+                    break;
+                case 'probar':
+                    $controller->probar();
+                    break;
+                case 'ver':
+                    $controller->ver();
+                    break;
+                case 'reenviar':
+                    $controller->reenviar();
+                    break;
+                case 'estadisticas':
+                    $controller->estadisticas();
+                    break;
+                case 'webhook':
+                    $controller->webhook();
+                    break;
+                default:
+                    $controller->index();
+            }
             break;
             
         case 'reportes':

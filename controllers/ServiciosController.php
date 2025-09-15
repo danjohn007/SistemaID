@@ -6,11 +6,13 @@ class ServiciosController {
     private $servicioModel;
     private $clienteModel;
     private $tipoServicioModel;
+    private $notificacionModel;
     
     public function __construct() {
         $this->servicioModel = new Servicio();
         $this->clienteModel = new Cliente();
         $this->tipoServicioModel = new TipoServicio();
+        $this->notificacionModel = new Notificacion();
     }
     
     public function index() {
@@ -54,6 +56,12 @@ class ServiciosController {
                 $error = 'Todos los campos obligatorios deben ser completados.';
             } else {
                 if ($this->servicioModel->create($data)) {
+                    // Obtener el ID del servicio recién creado
+                    $servicioId = Database::getInstance()->getConnection()->lastInsertId();
+                    
+                    // Programar notificaciones automáticas para el nuevo servicio
+                    $this->programarNotificacionesServicio($servicioId);
+                    
                     header('Location: ' . BASE_URL . 'servicios?success=Servicio creado exitosamente');
                     exit();
                 } else {
@@ -101,6 +109,9 @@ class ServiciosController {
                 $error = 'Todos los campos obligatorios deben ser completados.';
             } else {
                 if ($this->servicioModel->update($id, $data)) {
+                    // Reprogramar notificaciones si hay cambios en fechas o estado
+                    $this->reprogramarNotificacionesServicio($id);
+                    
                     header('Location: ' . BASE_URL . 'servicios?success=Servicio actualizado exitosamente');
                     exit();
                 } else {
@@ -144,10 +155,64 @@ class ServiciosController {
         $id = $_GET['id'] ?? 0;
         
         if ($this->servicioModel->delete($id)) {
+            // Cancelar notificaciones pendientes del servicio
+            $this->cancelarNotificacionesServicio($id);
+            
             header('Location: ' . BASE_URL . 'servicios?success=Servicio cancelado exitosamente');
         } else {
             header('Location: ' . BASE_URL . 'servicios?error=Error al cancelar el servicio');
         }
         exit();
+    }
+    
+    /**
+     * Programar notificaciones automáticas para un servicio nuevo
+     */
+    private function programarNotificacionesServicio($servicioId) {
+        try {
+            $this->notificacionModel->programarNotificacionesVencimiento($servicioId);
+        } catch (Exception $e) {
+            error_log("Error programando notificaciones para servicio $servicioId: " . $e->getMessage());
+        }
+    }
+    
+    /**
+     * Reprogramar notificaciones para un servicio actualizado
+     */
+    private function reprogramarNotificacionesServicio($servicioId) {
+        try {
+            // Cancelar notificaciones pendientes existentes
+            $this->cancelarNotificacionesServicio($servicioId, false);
+            
+            // Programar nuevas notificaciones
+            $this->notificacionModel->programarNotificacionesVencimiento($servicioId);
+        } catch (Exception $e) {
+            error_log("Error reprogramando notificaciones para servicio $servicioId: " . $e->getMessage());
+        }
+    }
+    
+    /**
+     * Cancelar notificaciones pendientes de un servicio
+     */
+    private function cancelarNotificacionesServicio($servicioId, $eliminarTodas = true) {
+        try {
+            $db = Database::getInstance()->getConnection();
+            
+            if ($eliminarTodas) {
+                // Eliminar todas las notificaciones del servicio
+                $stmt = $db->prepare("DELETE FROM notificaciones WHERE servicio_id = ?");
+                $stmt->execute([$servicioId]);
+            } else {
+                // Solo cancelar las pendientes
+                $stmt = $db->prepare("
+                    UPDATE notificaciones 
+                    SET estado = 'fallido' 
+                    WHERE servicio_id = ? AND estado = 'pendiente'
+                ");
+                $stmt->execute([$servicioId]);
+            }
+        } catch (Exception $e) {
+            error_log("Error cancelando notificaciones para servicio $servicioId: " . $e->getMessage());
+        }
     }
 }
