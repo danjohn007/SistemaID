@@ -10,13 +10,27 @@ class Pago {
     }
     
     public function create($data) {
+        // Calcular IVA si se requiere factura
+        $requiereFactura = $data['requiere_factura'] ?? 0;
+        $subtotal = $data['monto'];
+        $iva = 0;
+        $montoTotal = $subtotal;
+        
+        if ($requiereFactura) {
+            $iva = $subtotal * 0.16; // IVA 16%
+            $montoTotal = $subtotal + $iva;
+        }
+        
         $stmt = $this->db->prepare("
-            INSERT INTO pagos (servicio_id, monto, fecha_pago, fecha_vencimiento, estado, metodo_pago, referencia, notas) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO pagos (servicio_id, monto, requiere_factura, subtotal, iva, fecha_pago, fecha_vencimiento, estado, metodo_pago, referencia, notas) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         return $stmt->execute([
             $data['servicio_id'],
-            $data['monto'],
+            $montoTotal,
+            $requiereFactura,
+            $subtotal,
+            $iva,
             $data['fecha_pago'],
             $data['fecha_vencimiento'],
             $data['estado'] ?? 'pendiente',
@@ -64,14 +78,28 @@ class Pago {
     }
     
     public function update($id, $data) {
+        // Calcular IVA si se requiere factura
+        $requiereFactura = $data['requiere_factura'] ?? 0;
+        $subtotal = $data['monto'];
+        $iva = 0;
+        $montoTotal = $subtotal;
+        
+        if ($requiereFactura) {
+            $iva = $subtotal * 0.16; // IVA 16%
+            $montoTotal = $subtotal + $iva;
+        }
+        
         $stmt = $this->db->prepare("
             UPDATE pagos 
-            SET monto = ?, fecha_pago = ?, fecha_vencimiento = ?, estado = ?, 
+            SET monto = ?, requiere_factura = ?, subtotal = ?, iva = ?, fecha_pago = ?, fecha_vencimiento = ?, estado = ?, 
                 metodo_pago = ?, referencia = ?, notas = ? 
             WHERE id = ?
         ");
         return $stmt->execute([
-            $data['monto'],
+            $montoTotal,
+            $requiereFactura,
+            $subtotal,
+            $iva,
             $data['fecha_pago'],
             $data['fecha_vencimiento'],
             $data['estado'],
@@ -99,16 +127,26 @@ class Pago {
         return $stmt->fetchAll();
     }
     
-    public function registrarPago($servicioId, $monto, $metodoPago, $referencia = null) {
+    public function registrarPago($servicioId, $monto, $metodoPago, $referencia = null, $requiereFactura = 0) {
         $this->db->beginTransaction();
         
         try {
+            // Calcular IVA si se requiere factura
+            $subtotal = $monto;
+            $iva = 0;
+            $montoTotal = $subtotal;
+            
+            if ($requiereFactura) {
+                $iva = $subtotal * 0.16; // IVA 16%
+                $montoTotal = $subtotal + $iva;
+            }
+            
             // Crear el pago
             $stmt = $this->db->prepare("
-                INSERT INTO pagos (servicio_id, monto, fecha_pago, fecha_vencimiento, estado, metodo_pago, referencia) 
-                VALUES (?, ?, CURDATE(), CURDATE(), 'pagado', ?, ?)
+                INSERT INTO pagos (servicio_id, monto, requiere_factura, subtotal, iva, fecha_pago, fecha_vencimiento, estado, metodo_pago, referencia) 
+                VALUES (?, ?, ?, ?, ?, CURDATE(), CURDATE(), 'pagado', ?, ?)
             ");
-            $stmt->execute([$servicioId, $monto, $metodoPago, $referencia]);
+            $stmt->execute([$servicioId, $montoTotal, $requiereFactura, $subtotal, $iva, $metodoPago, $referencia]);
             
             // Renovar el servicio
             $servicioModel = new Servicio();

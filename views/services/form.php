@@ -75,7 +75,7 @@ $servicio = $data['servicio'] ?? null;
                         </div>
                         
                         <!-- Nombre del Servicio -->
-                        <div class="col-md-12 mb-3">
+                        <div class="col-md-6 mb-3">
                             <label for="nombre" class="form-label">
                                 <i class="fas fa-server me-1 text-primary"></i>
                                 Nombre del Servicio <span class="text-danger">*</span>
@@ -87,6 +87,20 @@ $servicio = $data['servicio'] ?? null;
                                    value="<?= htmlspecialchars($servicio['nombre'] ?? '') ?>"
                                    placeholder="Ej: empresaabc.com, Hosting Premium, SSL Wildcard"
                                    required>
+                        </div>
+                        
+                        <!-- Dominio -->
+                        <div class="col-md-6 mb-3">
+                            <label for="dominio" class="form-label">
+                                <i class="fas fa-globe me-1 text-info"></i>
+                                Dominio
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="dominio" 
+                                   name="dominio" 
+                                   value="<?= htmlspecialchars($servicio['dominio'] ?? '') ?>"
+                                   placeholder="Ej: ejemplo.com, www.miempresa.mx">
                         </div>
                         
                         <!-- Descripción -->

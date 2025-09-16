@@ -33,6 +33,7 @@ class DashboardController {
         $ventasPorMes = $this->getVentasPorMes($fechaInicio, $fechaFin);
         $serviciosPorTipo = $this->getServiciosPorTipo();
         $serviciosRenovados = $this->getServiciosRenovados($fechaInicio, $fechaFin);
+        $estadisticasIngresos = $this->getEstadisticasIngresos($fechaInicio, $fechaFin);
         
         $data = [
             'total_clientes' => $totalClientes,
@@ -43,6 +44,7 @@ class DashboardController {
             'ventas_por_mes' => $ventasPorMes,
             'servicios_por_tipo' => $serviciosPorTipo,
             'servicios_renovados' => $serviciosRenovados,
+            'estadisticas_ingresos' => $estadisticasIngresos,
             'fecha_inicio' => $fechaInicio,
             'fecha_fin' => $fechaFin
         ];
@@ -53,31 +55,31 @@ class DashboardController {
     private function getVentasPorMes($fechaInicio = null, $fechaFin = null) {
         $db = Database::getInstance()->getConnection();
         
-        // Si no se proporcionan fechas, usar últimos 12 meses
+        // Si no se proporcionan fechas, usar últimos 30 días para vista diaria
         if (!$fechaInicio || !$fechaFin) {
             $stmt = $db->query("
                 SELECT 
-                    DATE_FORMAT(fecha_pago, '%Y-%m') as mes,
+                    DATE_FORMAT(fecha_pago, '%Y-%m-%d') as fecha,
                     SUM(monto) as total
                 FROM pagos 
                 WHERE estado = 'pagado' 
-                AND fecha_pago >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
-                GROUP BY DATE_FORMAT(fecha_pago, '%Y-%m')
-                ORDER BY mes ASC
+                AND fecha_pago >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+                GROUP BY DATE_FORMAT(fecha_pago, '%Y-%m-%d')
+                ORDER BY fecha ASC
             ");
             return $stmt->fetchAll();
         }
         
         $stmt = $db->prepare("
             SELECT 
-                DATE_FORMAT(fecha_pago, '%Y-%m') as mes,
+                DATE_FORMAT(fecha_pago, '%Y-%m-%d') as fecha,
                 SUM(monto) as total
             FROM pagos 
             WHERE estado = 'pagado' 
             AND fecha_pago >= ? 
             AND fecha_pago <= ?
-            GROUP BY DATE_FORMAT(fecha_pago, '%Y-%m')
-            ORDER BY mes ASC
+            GROUP BY DATE_FORMAT(fecha_pago, '%Y-%m-%d')
+            ORDER BY fecha ASC
         ");
         $stmt->execute([$fechaInicio, $fechaFin]);
         return $stmt->fetchAll();
@@ -102,63 +104,88 @@ class DashboardController {
     private function getServiciosRenovados($fechaInicio = null, $fechaFin = null) {
         $db = Database::getInstance()->getConnection();
         
-        // Si no se proporcionan fechas, usar últimos 12 meses
+        // Si no se proporcionan fechas, usar últimos 30 días
         if (!$fechaInicio || !$fechaFin) {
-            $fechaInicio = date('Y-m-01', strtotime('-11 months'));
-            $fechaFin = date('Y-m-t');
+            $fechaInicio = date('Y-m-d', strtotime('-30 days'));
+            $fechaFin = date('Y-m-d');
         }
         
         // Obtener servicios renovados (pagos realizados)
         $stmtRenovados = $db->prepare("
             SELECT 
-                DATE_FORMAT(fecha_pago, '%Y-%m') as mes,
                 COUNT(*) as renovados
             FROM pagos 
             WHERE estado = 'pagado' 
             AND fecha_pago BETWEEN ? AND ?
-            GROUP BY DATE_FORMAT(fecha_pago, '%Y-%m')
-            ORDER BY mes ASC
         ");
         $stmtRenovados->execute([$fechaInicio, $fechaFin]);
-        $renovados = $stmtRenovados->fetchAll(PDO::FETCH_KEY_PAIR);
+        $renovados = $stmtRenovados->fetchColumn();
         
-        // Obtener servicios no renovados (vencidos sin pago)
-        $stmtNoRenovados = $db->prepare("
+        // Obtener servicios nuevos (creados en el rango)
+        $stmtNuevos = $db->prepare("
             SELECT 
-                DATE_FORMAT(fecha_vencimiento, '%Y-%m') as mes,
-                COUNT(*) as no_renovados
+                COUNT(*) as nuevos
             FROM servicios 
-            WHERE estado = 'vencido' 
-            AND fecha_vencimiento BETWEEN ? AND ?
-            AND id NOT IN (
-                SELECT DISTINCT servicio_id 
-                FROM pagos 
-                WHERE estado = 'pagado' 
-                AND fecha_pago >= fecha_vencimiento
-            )
-            GROUP BY DATE_FORMAT(fecha_vencimiento, '%Y-%m')
-            ORDER BY mes ASC
+            WHERE fecha_creacion BETWEEN ? AND ?
         ");
-        $stmtNoRenovados->execute([$fechaInicio, $fechaFin]);
-        $noRenovados = $stmtNoRenovados->fetchAll(PDO::FETCH_KEY_PAIR);
+        $stmtNuevos->execute([$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59']);
+        $nuevos = $stmtNuevos->fetchColumn();
         
-        // Combinar resultados
-        $mesesCompletos = [];
-        $todosLosMeses = array_unique(array_merge(array_keys($renovados), array_keys($noRenovados)));
+        // Obtener servicios pendientes (por vencer en los próximos 30 días)
+        $stmtPendientes = $db->prepare("
+            SELECT 
+                COUNT(*) as pendientes
+            FROM servicios 
+            WHERE estado = 'activo' 
+            AND fecha_vencimiento BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 30 DAY)
+        ");
+        $stmtPendientes->execute();
+        $pendientes = $stmtPendientes->fetchColumn();
         
-        foreach ($todosLosMeses as $mes) {
-            $mesesCompletos[] = [
-                'mes' => $mes,
-                'renovados' => $renovados[$mes] ?? 0,
-                'no_renovados' => $noRenovados[$mes] ?? 0
-            ];
+        // Obtener servicios cancelados en el rango
+        $stmtCancelados = $db->prepare("
+            SELECT 
+                COUNT(*) as cancelados
+            FROM servicios 
+            WHERE estado = 'cancelado' 
+            AND fecha_actualizacion BETWEEN ? AND ?
+        ");
+        $stmtCancelados->execute([$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59']);
+        $cancelados = $stmtCancelados->fetchColumn();
+        
+        return [
+            'renovados' => $renovados ?: 0,
+            'nuevos' => $nuevos ?: 0,
+            'pendientes' => $pendientes ?: 0,
+            'cancelados' => $cancelados ?: 0,
+            'fecha_inicio' => $fechaInicio,
+            'fecha_fin' => $fechaFin
+        ];
+    }
+    
+    private function getEstadisticasIngresos($fechaInicio = null, $fechaFin = null) {
+        $db = Database::getInstance()->getConnection();
+        
+        // Si no se proporcionan fechas, usar últimos 30 días
+        if (!$fechaInicio || !$fechaFin) {
+            $fechaInicio = date('Y-m-d', strtotime('-30 days'));
+            $fechaFin = date('Y-m-d');
         }
         
-        // Ordenar por mes
-        usort($mesesCompletos, function($a, $b) {
-            return strcmp($a['mes'], $b['mes']);
-        });
-        
-        return $mesesCompletos;
+        // Obtener ingresos por método de pago
+        $stmt = $db->prepare("
+            SELECT 
+                metodo_pago,
+                COUNT(*) as cantidad,
+                SUM(monto) as total
+            FROM pagos 
+            WHERE estado = 'pagado' 
+            AND fecha_pago BETWEEN ? AND ?
+            AND metodo_pago IS NOT NULL
+            GROUP BY metodo_pago
+            ORDER BY total DESC
+        ");
+        $stmt->execute([$fechaInicio, $fechaFin]);
+        return $stmt->fetchAll();
     }
 }
