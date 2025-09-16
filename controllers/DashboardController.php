@@ -108,19 +108,57 @@ class DashboardController {
             $fechaFin = date('Y-m-t');
         }
         
-        $stmt = $db->prepare("
+        // Obtener servicios renovados (pagos realizados)
+        $stmtRenovados = $db->prepare("
             SELECT 
-                DATE_FORMAT(p.fecha_pago, '%Y-%m') as mes,
-                COUNT(CASE WHEN p.estado = 'pagado' THEN 1 END) as renovados,
-                COUNT(CASE WHEN s.fecha_vencimiento < CURDATE() AND p.estado != 'pagado' THEN 1 END) as no_renovados
-            FROM servicios s
-            LEFT JOIN pagos p ON s.id = p.servicio_id 
-                AND p.fecha_pago BETWEEN ? AND ?
-            WHERE s.fecha_vencimiento BETWEEN ? AND ?
-            GROUP BY DATE_FORMAT(COALESCE(p.fecha_pago, s.fecha_vencimiento), '%Y-%m')
+                DATE_FORMAT(fecha_pago, '%Y-%m') as mes,
+                COUNT(*) as renovados
+            FROM pagos 
+            WHERE estado = 'pagado' 
+            AND fecha_pago BETWEEN ? AND ?
+            GROUP BY DATE_FORMAT(fecha_pago, '%Y-%m')
             ORDER BY mes ASC
         ");
-        $stmt->execute([$fechaInicio, $fechaFin, $fechaInicio, $fechaFin]);
-        return $stmt->fetchAll();
+        $stmtRenovados->execute([$fechaInicio, $fechaFin]);
+        $renovados = $stmtRenovados->fetchAll(PDO::FETCH_KEY_PAIR);
+        
+        // Obtener servicios no renovados (vencidos sin pago)
+        $stmtNoRenovados = $db->prepare("
+            SELECT 
+                DATE_FORMAT(fecha_vencimiento, '%Y-%m') as mes,
+                COUNT(*) as no_renovados
+            FROM servicios 
+            WHERE estado = 'vencido' 
+            AND fecha_vencimiento BETWEEN ? AND ?
+            AND id NOT IN (
+                SELECT DISTINCT servicio_id 
+                FROM pagos 
+                WHERE estado = 'pagado' 
+                AND fecha_pago >= fecha_vencimiento
+            )
+            GROUP BY DATE_FORMAT(fecha_vencimiento, '%Y-%m')
+            ORDER BY mes ASC
+        ");
+        $stmtNoRenovados->execute([$fechaInicio, $fechaFin]);
+        $noRenovados = $stmtNoRenovados->fetchAll(PDO::FETCH_KEY_PAIR);
+        
+        // Combinar resultados
+        $mesesCompletos = [];
+        $todosLosMeses = array_unique(array_merge(array_keys($renovados), array_keys($noRenovados)));
+        
+        foreach ($todosLosMeses as $mes) {
+            $mesesCompletos[] = [
+                'mes' => $mes,
+                'renovados' => $renovados[$mes] ?? 0,
+                'no_renovados' => $noRenovados[$mes] ?? 0
+            ];
+        }
+        
+        // Ordenar por mes
+        usort($mesesCompletos, function($a, $b) {
+            return strcmp($a['mes'], $b['mes']);
+        });
+        
+        return $mesesCompletos;
     }
 }
