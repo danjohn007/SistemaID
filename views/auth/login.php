@@ -87,13 +87,7 @@
             border: none;
         }
         
-        .demo-credentials {
-            background: #f1f5f9;
-            border-radius: 10px;
-            padding: 1rem;
-            margin-top: 1rem;
-            border-left: 4px solid #2563eb;
-        }
+
     </style>
 </head>
 <body>
@@ -164,17 +158,7 @@
                             </button>
                         </form>
                         
-                        <!-- Credenciales de demostración -->
-                        <div class="demo-credentials">
-                            <h6 class="text-primary mb-2">
-                                <i class="fas fa-info-circle me-2"></i>
-                                Credenciales de Prueba
-                            </h6>
-                            <small class="text-muted">
-                                <strong>Email:</strong> admin@sistemaid.com<br>
-                                <strong>Password:</strong> password
-                            </small>
-                        </div>
+
                         
                         <div class="text-center mt-4">
                             <a href="<?= BASE_URL ?>test" class="btn btn-outline-primary btn-sm">
@@ -234,16 +218,7 @@
             }
         });
         
-        // Auto-fill demo credentials
-        document.addEventListener('DOMContentLoaded', function() {
-            const demoCredentials = document.querySelector('.demo-credentials');
-            if (demoCredentials) {
-                demoCredentials.addEventListener('click', function() {
-                    document.getElementById('email').value = 'admin@sistemaid.com';
-                    document.getElementById('password').value = 'password';
-                });
-            }
-        });
+
     </script>
 </body>
 </html>

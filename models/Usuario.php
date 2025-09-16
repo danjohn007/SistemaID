@@ -70,4 +70,28 @@ class Usuario {
         $stmt = $this->db->prepare("UPDATE usuarios SET ultima_conexion = NOW() WHERE id = ?");
         $stmt->execute([$id]);
     }
+    
+    public function updateProfile($id, $data) {
+        $stmt = $this->db->prepare("UPDATE usuarios SET nombre = ?, email = ? WHERE id = ?");
+        return $stmt->execute([
+            $data['nombre'],
+            $data['email'],
+            $id
+        ]);
+    }
+    
+    public function changePassword($id, $currentPassword, $newPassword) {
+        // Verificar contraseña actual
+        $user = $this->findById($id);
+        if (!$user || !password_verify($currentPassword, $user['password'])) {
+            return false;
+        }
+        
+        // Actualizar contraseña
+        $stmt = $this->db->prepare("UPDATE usuarios SET password = ? WHERE id = ?");
+        return $stmt->execute([
+            password_hash($newPassword, PASSWORD_DEFAULT),
+            $id
+        ]);
+    }
 }
