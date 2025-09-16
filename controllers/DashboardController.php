@@ -12,6 +12,10 @@ class DashboardController {
     }
     
     public function index() {
+        // Obtener filtros de fecha
+        $fechaInicio = $_GET['fecha_inicio'] ?? date('Y-m-01', strtotime('-11 months'));
+        $fechaFin = $_GET['fecha_fin'] ?? date('Y-m-t');
+        
         // Obtener estadísticas generales
         $totalClientes = $this->clienteModel->count();
         $estadisticasServicios = $this->servicioModel->getEstadisticas();
@@ -25,9 +29,10 @@ class DashboardController {
         // Servicios próximos a vencer (7 días)
         $serviciosUrgentes = $this->servicioModel->getServiciosPorVencer(7);
         
-        // Datos para gráficas
-        $ventasPorMes = $this->getVentasPorMes();
+        // Datos para gráficas con filtros
+        $ventasPorMes = $this->getVentasPorMes($fechaInicio, $fechaFin);
         $serviciosPorTipo = $this->getServiciosPorTipo();
+        $serviciosRenovados = $this->getServiciosRenovados($fechaInicio, $fechaFin);
         
         $data = [
             'total_clientes' => $totalClientes,
@@ -36,24 +41,45 @@ class DashboardController {
             'servicios_vencidos' => $serviciosVencidos,
             'servicios_urgentes' => $serviciosUrgentes,
             'ventas_por_mes' => $ventasPorMes,
-            'servicios_por_tipo' => $serviciosPorTipo
+            'servicios_por_tipo' => $serviciosPorTipo,
+            'servicios_renovados' => $serviciosRenovados,
+            'fecha_inicio' => $fechaInicio,
+            'fecha_fin' => $fechaFin
         ];
         
         include 'views/dashboard/index.php';
     }
     
-    private function getVentasPorMes() {
+    private function getVentasPorMes($fechaInicio = null, $fechaFin = null) {
         $db = Database::getInstance()->getConnection();
-        $stmt = $db->query("
+        
+        // Si no se proporcionan fechas, usar últimos 12 meses
+        if (!$fechaInicio || !$fechaFin) {
+            $stmt = $db->query("
+                SELECT 
+                    DATE_FORMAT(fecha_pago, '%Y-%m') as mes,
+                    SUM(monto) as total
+                FROM pagos 
+                WHERE estado = 'pagado' 
+                AND fecha_pago >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
+                GROUP BY DATE_FORMAT(fecha_pago, '%Y-%m')
+                ORDER BY mes ASC
+            ");
+            return $stmt->fetchAll();
+        }
+        
+        $stmt = $db->prepare("
             SELECT 
                 DATE_FORMAT(fecha_pago, '%Y-%m') as mes,
                 SUM(monto) as total
             FROM pagos 
             WHERE estado = 'pagado' 
-            AND fecha_pago >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
+            AND fecha_pago >= ? 
+            AND fecha_pago <= ?
             GROUP BY DATE_FORMAT(fecha_pago, '%Y-%m')
             ORDER BY mes ASC
         ");
+        $stmt->execute([$fechaInicio, $fechaFin]);
         return $stmt->fetchAll();
     }
     
@@ -70,6 +96,31 @@ class DashboardController {
             GROUP BY ts.id, ts.nombre
             ORDER BY cantidad DESC
         ");
+        return $stmt->fetchAll();
+    }
+    
+    private function getServiciosRenovados($fechaInicio = null, $fechaFin = null) {
+        $db = Database::getInstance()->getConnection();
+        
+        // Si no se proporcionan fechas, usar últimos 12 meses
+        if (!$fechaInicio || !$fechaFin) {
+            $fechaInicio = date('Y-m-01', strtotime('-11 months'));
+            $fechaFin = date('Y-m-t');
+        }
+        
+        $stmt = $db->prepare("
+            SELECT 
+                DATE_FORMAT(p.fecha_pago, '%Y-%m') as mes,
+                COUNT(CASE WHEN p.estado = 'pagado' THEN 1 END) as renovados,
+                COUNT(CASE WHEN s.fecha_vencimiento < CURDATE() AND p.estado != 'pagado' THEN 1 END) as no_renovados
+            FROM servicios s
+            LEFT JOIN pagos p ON s.id = p.servicio_id 
+                AND p.fecha_pago BETWEEN ? AND ?
+            WHERE s.fecha_vencimiento BETWEEN ? AND ?
+            GROUP BY DATE_FORMAT(COALESCE(p.fecha_pago, s.fecha_vencimiento), '%Y-%m')
+            ORDER BY mes ASC
+        ");
+        $stmt->execute([$fechaInicio, $fechaFin, $fechaInicio, $fechaFin]);
         return $stmt->fetchAll();
     }
 }
