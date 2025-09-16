@@ -208,6 +208,18 @@ class ReportesController {
                     ]);
                 }
                 break;
+            case 'general':
+                if (isset($data['total_clientes'])) {
+                    // Summary data
+                    fputcsv($output, ['Métrica', 'Valor']);
+                    fputcsv($output, ['Total Clientes', $data['total_clientes']]);
+                    fputcsv($output, ['Total Servicios', $data['total_servicios']]);
+                    fputcsv($output, ['Servicios Activos', $data['servicios_activos']]);
+                    fputcsv($output, ['Servicios Vencidos', $data['servicios_vencidos']]);
+                    fputcsv($output, ['Total Ingresos', '$' . number_format($data['total_ingresos'], 2)]);
+                    fputcsv($output, ['Total Pagos', $data['total_pagos']]);
+                }
+                break;
         }
         
         fclose($output);
@@ -221,9 +233,64 @@ class ReportesController {
         header('Content-Type: application/vnd.ms-excel; charset=utf-8');
         header('Content-Disposition: attachment; filename=' . $filename);
         
-        echo "\xEF\xBB\xBF"; // UTF-8 BOM
+        $output = fopen('php://output', 'w');
         
-        $this->exportCSV($data, $tipoReporte);
+        // UTF-8 BOM for Excel compatibility
+        fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
+        
+        switch ($tipoReporte) {
+            case 'ingresos':
+                fputcsv($output, ['Fecha', 'Total Ingresos', 'Cantidad Pagos', 'Promedio por Pago'], "\t");
+                foreach ($data as $row) {
+                    fputcsv($output, [
+                        $row['fecha'],
+                        '$' . number_format($row['total_ingresos'], 2),
+                        $row['cantidad_pagos'],
+                        '$' . number_format($row['promedio_pago'], 2)
+                    ], "\t");
+                }
+                break;
+            case 'clientes':
+                fputcsv($output, ['Cliente', 'Email', 'Total Servicios', 'Servicios Activos', 'Total Pagado'], "\t");
+                foreach ($data as $row) {
+                    fputcsv($output, [
+                        $row['nombre_razon_social'],
+                        $row['email'],
+                        $row['total_servicios'],
+                        $row['servicios_activos'],
+                        '$' . number_format($row['total_pagado'], 2)
+                    ], "\t");
+                }
+                break;
+            case 'servicios':
+                fputcsv($output, ['Tipo de Servicio', 'Cantidad', 'Activos', 'Vencidos', 'Precio Promedio', 'Total Ingresos'], "\t");
+                foreach ($data as $row) {
+                    fputcsv($output, [
+                        $row['tipo_servicio'],
+                        $row['cantidad'],
+                        $row['activos'],
+                        $row['vencidos'],
+                        '$' . number_format($row['precio_promedio'], 2),
+                        '$' . number_format($row['total_ingresos'], 2)
+                    ], "\t");
+                }
+                break;
+            case 'general':
+                if (isset($data['total_clientes'])) {
+                    // Summary data
+                    fputcsv($output, ['Métrica', 'Valor'], "\t");
+                    fputcsv($output, ['Total Clientes', $data['total_clientes']], "\t");
+                    fputcsv($output, ['Total Servicios', $data['total_servicios']], "\t");
+                    fputcsv($output, ['Servicios Activos', $data['servicios_activos']], "\t");
+                    fputcsv($output, ['Servicios Vencidos', $data['servicios_vencidos']], "\t");
+                    fputcsv($output, ['Total Ingresos', '$' . number_format($data['total_ingresos'], 2)], "\t");
+                    fputcsv($output, ['Total Pagos', $data['total_pagos']], "\t");
+                }
+                break;
+        }
+        
+        fclose($output);
+        exit;
     }
     
     private function exportPDF($data, $tipoReporte) {
@@ -233,11 +300,14 @@ class ReportesController {
         header('Content-Type: text/html; charset=utf-8');
         header('Content-Disposition: attachment; filename=' . $filename);
         
-        echo "<!DOCTYPE html><html><head><meta charset='utf-8'><title>Reporte</title>";
-        echo "<style>body{font-family: Arial;} table{border-collapse: collapse; width: 100%;} th,td{border: 1px solid #ddd; padding: 8px; text-align: left;} th{background-color: #f2f2f2;}</style>";
+        echo "<!DOCTYPE html><html><head><meta charset='utf-8'><title>Reporte " . ucfirst($tipoReporte) . "</title>";
+        echo "<style>body{font-family: Arial, sans-serif; margin: 20px;} table{border-collapse: collapse; width: 100%; margin-top: 20px;} th,td{border: 1px solid #ddd; padding: 12px; text-align: left;} th{background-color: #f2f2f2; font-weight: bold;} .header{text-align: center; margin-bottom: 30px;} .summary{background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 20px;} @media print{body{margin: 0;} .no-print{display: none;}}</style>";
         echo "</head><body>";
-        echo "<h1>Reporte " . ucfirst($tipoReporte) . "</h1>";
+        
+        echo "<div class='header'>";
+        echo "<h1>Sistema ID - Reporte " . ucfirst($tipoReporte) . "</h1>";
         echo "<p>Generado el: " . date('d/m/Y H:i') . "</p>";
+        echo "</div>";
         
         if (is_array($data) && !empty($data)) {
             echo "<table>";
@@ -245,20 +315,62 @@ class ReportesController {
             // Headers based on report type
             switch ($tipoReporte) {
                 case 'ingresos':
-                    echo "<tr><th>Fecha</th><th>Total Ingresos</th><th>Cantidad Pagos</th><th>Promedio</th></tr>";
+                    echo "<thead><tr><th>Fecha</th><th>Total Ingresos</th><th>Cantidad Pagos</th><th>Promedio</th></tr></thead><tbody>";
                     foreach ($data as $row) {
                         echo "<tr>";
-                        echo "<td>" . $row['fecha'] . "</td>";
+                        echo "<td>" . date('d/m/Y', strtotime($row['fecha'])) . "</td>";
                         echo "<td>$" . number_format($row['total_ingresos'], 2) . "</td>";
                         echo "<td>" . $row['cantidad_pagos'] . "</td>";
                         echo "<td>$" . number_format($row['promedio_pago'], 2) . "</td>";
                         echo "</tr>";
                     }
                     break;
+                case 'clientes':
+                    echo "<thead><tr><th>Cliente</th><th>Email</th><th>Total Servicios</th><th>Servicios Activos</th><th>Total Pagado</th></tr></thead><tbody>";
+                    foreach ($data as $row) {
+                        echo "<tr>";
+                        echo "<td>" . htmlspecialchars($row['nombre_razon_social']) . "</td>";
+                        echo "<td>" . htmlspecialchars($row['email']) . "</td>";
+                        echo "<td>" . $row['total_servicios'] . "</td>";
+                        echo "<td>" . $row['servicios_activos'] . "</td>";
+                        echo "<td>$" . number_format($row['total_pagado'], 2) . "</td>";
+                        echo "</tr>";
+                    }
+                    break;
+                case 'servicios':
+                    echo "<thead><tr><th>Tipo de Servicio</th><th>Cantidad</th><th>Activos</th><th>Vencidos</th><th>Precio Promedio</th><th>Total Ingresos</th></tr></thead><tbody>";
+                    foreach ($data as $row) {
+                        echo "<tr>";
+                        echo "<td>" . htmlspecialchars($row['tipo_servicio']) . "</td>";
+                        echo "<td>" . $row['cantidad'] . "</td>";
+                        echo "<td>" . $row['activos'] . "</td>";
+                        echo "<td>" . $row['vencidos'] . "</td>";
+                        echo "<td>$" . number_format($row['precio_promedio'], 2) . "</td>";
+                        echo "<td>$" . number_format($row['total_ingresos'], 2) . "</td>";
+                        echo "</tr>";
+                    }
+                    break;
+                case 'general':
+                    if (isset($data['total_clientes'])) {
+                        echo "<thead><tr><th>Métrica</th><th>Valor</th></tr></thead><tbody>";
+                        echo "<tr><td>Total Clientes</td><td>" . $data['total_clientes'] . "</td></tr>";
+                        echo "<tr><td>Total Servicios</td><td>" . $data['total_servicios'] . "</td></tr>";
+                        echo "<tr><td>Servicios Activos</td><td>" . $data['servicios_activos'] . "</td></tr>";
+                        echo "<tr><td>Servicios Vencidos</td><td>" . $data['servicios_vencidos'] . "</td></tr>";
+                        echo "<tr><td>Total Ingresos</td><td>$" . number_format($data['total_ingresos'], 2) . "</td></tr>";
+                        echo "<tr><td>Total Pagos</td><td>" . $data['total_pagos'] . "</td></tr>";
+                    }
+                    break;
             }
             
-            echo "</table>";
+            echo "</tbody></table>";
+        } else {
+            echo "<div class='summary'><p>No hay datos disponibles para el período seleccionado.</p></div>";
         }
+        
+        echo "<div class='no-print' style='margin-top: 30px;'>";
+        echo "<button onclick='window.print()' style='background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;'>Imprimir / Guardar como PDF</button>";
+        echo "</div>";
         
         echo "</body></html>";
         exit;

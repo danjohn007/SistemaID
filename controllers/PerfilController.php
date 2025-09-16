@@ -15,6 +15,9 @@ class PerfilController {
         $error = '';
         $success = '';
         
+        // Update last connection timestamp
+        $this->userModel->updateLastConnection($userId);
+        
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $action = $_POST['action'] ?? '';
             

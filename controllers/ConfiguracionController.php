@@ -59,11 +59,20 @@ class ConfiguracionController {
         $configs = [];
         
         // Obtener todas las configuraciones
-        $stmt = $this->db->query("SELECT * FROM configuraciones ORDER BY categoria, nombre");
+        $stmt = $this->db->query("SELECT * FROM configuraciones ORDER BY clave");
         $results = $stmt->fetchAll();
         
         foreach ($results as $config) {
-            $configs[$config['categoria']][$config['nombre']] = $config['valor'];
+            // Separar la clave en categoría y nombre usando underscore como separador
+            $parts = explode('_', $config['clave'], 2);
+            if (count($parts) >= 2) {
+                $categoria = $parts[0];
+                $nombre = $parts[1];
+            } else {
+                $categoria = 'general';
+                $nombre = $config['clave'];
+            }
+            $configs[$categoria][$nombre] = $config['valor'];
         }
         
         return $configs;
@@ -136,12 +145,13 @@ class ConfiguracionController {
     }
     
     private function updateConfig($categoria, $nombre, $valor) {
+        $clave = $categoria . '_' . $nombre;
         $stmt = $this->db->prepare("
-            INSERT INTO configuraciones (categoria, nombre, valor) 
-            VALUES (?, ?, ?) 
+            INSERT INTO configuraciones (clave, valor) 
+            VALUES (?, ?) 
             ON DUPLICATE KEY UPDATE valor = VALUES(valor)
         ");
-        return $stmt->execute([$categoria, $nombre, $valor]);
+        return $stmt->execute([$clave, $valor]);
     }
     
     public function testEmail() {
