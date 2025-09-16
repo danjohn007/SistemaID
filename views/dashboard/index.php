@@ -108,15 +108,55 @@ include 'views/layout/header.php';
     </div>
 </div>
 
+<!-- Filtros para Gráficas -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header bg-light">
+                <h6 class="mb-0">
+                    <i class="fas fa-filter me-2"></i>
+                    Filtros para Gráficas
+                </h6>
+            </div>
+            <div class="card-body">
+                <form method="GET" id="filterForm">
+                    <div class="row align-items-end">
+                        <div class="col-md-3">
+                            <label for="fecha_inicio" class="form-label">Fecha Inicio</label>
+                            <input type="date" class="form-control" name="fecha_inicio" id="fecha_inicio" 
+                                   value="<?= htmlspecialchars($data['fecha_inicio'] ?? '') ?>">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="fecha_fin" class="form-label">Fecha Fin</label>
+                            <input type="date" class="form-control" name="fecha_fin" id="fecha_fin"
+                                   value="<?= htmlspecialchars($data['fecha_fin'] ?? '') ?>">
+                        </div>
+                        <div class="col-md-3">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search me-1"></i>
+                                Filtrar
+                            </button>
+                            <button type="button" class="btn btn-secondary ms-2" onclick="resetFilters()">
+                                <i class="fas fa-undo me-1"></i>
+                                Limpiar
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Gráficas y Servicios por Vencer -->
 <div class="row">
     <!-- Gráfica de Ventas -->
-    <div class="col-xl-8 col-lg-7">
+    <div class="col-xl-6 col-lg-6">
         <div class="card shadow mb-4">
             <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
                 <h6 class="m-0 font-weight-bold text-primary">
                     <i class="fas fa-chart-line me-2"></i>
-                    Ingresos por Mes
+                    Ingresos por Rango de Fechas
                 </h6>
             </div>
             <div class="card-body">
@@ -127,8 +167,27 @@ include 'views/layout/header.php';
         </div>
     </div>
     
+    <!-- Gráfica de Servicios Renovados -->
+    <div class="col-xl-6 col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-success">
+                    <i class="fas fa-sync me-2"></i>
+                    Servicios Renovados vs No Renovados
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="chart-area">
+                    <canvas id="renovacionesChart" width="100" height="40"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
     <!-- Servicios por Tipo -->
-    <div class="col-xl-4 col-lg-5">
+    <div class="col-xl-6 col-lg-6">
         <div class="card shadow mb-4">
             <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
                 <h6 class="m-0 font-weight-bold text-primary">
@@ -142,6 +201,11 @@ include 'views/layout/header.php';
                 </div>
             </div>
         </div>
+    </div>
+    
+    <!-- Espacio adicional o futuras gráficas -->
+    <div class="col-xl-6 col-lg-6">
+        <!-- Espacio reservado para futuras mejoras -->
     </div>
 </div>
 
@@ -309,6 +373,7 @@ include 'views/layout/header.php';
 // Datos para las gráficas
 const ventasData = <?= json_encode($data['ventas_por_mes'] ?? []) ?>;
 const tiposData = <?= json_encode($data['servicios_por_tipo'] ?? []) ?>;
+const renovacionesData = <?= json_encode($data['servicios_renovados'] ?? []) ?>;
 
 // Gráfica de ventas por mes
 const ctxVentas = document.getElementById('ventasChart').getContext('2d');
@@ -348,6 +413,51 @@ const ventasChart = new Chart(ctxVentas, {
     }
 });
 
+// Gráfica de servicios renovados
+const ctxRenovaciones = document.getElementById('renovacionesChart').getContext('2d');
+const renovacionesChart = new Chart(ctxRenovaciones, {
+    type: 'bar',
+    data: {
+        labels: renovacionesData.map(item => {
+            if (item.mes) {
+                const fecha = new Date(item.mes + '-01');
+                return fecha.toLocaleDateString('es-ES', { month: 'short', year: '2-digit' });
+            }
+            return 'Sin datos';
+        }),
+        datasets: [{
+            label: 'Renovados',
+            data: renovacionesData.map(item => item.renovados || 0),
+            backgroundColor: 'rgba(34, 197, 94, 0.8)',
+            borderColor: 'rgb(34, 197, 94)',
+            borderWidth: 1
+        }, {
+            label: 'No Renovados',
+            data: renovacionesData.map(item => item.no_renovados || 0),
+            backgroundColor: 'rgba(239, 68, 68, 0.8)',
+            borderColor: 'rgb(239, 68, 68)',
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: {
+                display: true,
+                position: 'top'
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    stepSize: 1
+                }
+            }
+        }
+    }
+});
+
 // Gráfica de servicios por tipo
 const ctxTipos = document.getElementById('tiposChart').getContext('2d');
 const tiposChart = new Chart(ctxTipos, {
@@ -375,6 +485,13 @@ const tiposChart = new Chart(ctxTipos, {
         }
     }
 });
+
+// Función para limpiar filtros
+function resetFilters() {
+    document.getElementById('fecha_inicio').value = '';
+    document.getElementById('fecha_fin').value = '';
+    document.getElementById('filterForm').submit();
+}
 </script>
 
 <?php include 'views/layout/footer.php'; ?>

@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - SistemaID</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+</head>
+<body>
+    <div class="container-fluid">
+        <!-- Header del Dashboard -->
+        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+            <h1 class="h2">
+                <i class="fas fa-tachometer-alt text-primary me-2"></i>
+                Dashboard - SistemaID (Mejoras Implementadas)
+            </h1>
+        </div>
+
+        <!-- Filtros para Gráficas -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card shadow">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0">
+                            <i class="fas fa-filter me-2"></i>
+                            Filtros para Gráficas <span class="badge bg-success">NUEVO</span>
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <form method="GET" id="filterForm">
+                            <div class="row align-items-end">
+                                <div class="col-md-3">
+                                    <label for="fecha_inicio" class="form-label">Fecha Inicio</label>
+                                    <input type="date" class="form-control" name="fecha_inicio" id="fecha_inicio" 
+                                           value="2024-01-01">
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="fecha_fin" class="form-label">Fecha Fin</label>
+                                    <input type="date" class="form-control" name="fecha_fin" id="fecha_fin"
+                                           value="2024-12-31">
+                                </div>
+                                <div class="col-md-3">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-search me-1"></i>
+                                        Filtrar
+                                    </button>
+                                    <button type="button" class="btn btn-secondary ms-2" onclick="resetFilters()">
+                                        <i class="fas fa-undo me-1"></i>
+                                        Limpiar
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráficas -->
+        <div class="row">
+            <!-- Gráfica de Ventas -->
+            <div class="col-xl-6 col-lg-6">
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                        <h6 class="m-0 font-weight-bold text-primary">
+                            <i class="fas fa-chart-line me-2"></i>
+                            Ingresos por Rango de Fechas <span class="badge bg-warning">MODIFICADO</span>
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-area">
+                            <canvas id="ventasChart" width="100" height="40"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Gráfica de Servicios Renovados -->
+            <div class="col-xl-6 col-lg-6">
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                        <h6 class="m-0 font-weight-bold text-success">
+                            <i class="fas fa-sync me-2"></i>
+                            Servicios Renovados vs No Renovados <span class="badge bg-success">NUEVO</span>
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-area">
+                            <canvas id="renovacionesChart" width="100" height="40"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Servicios por Tipo -->
+            <div class="col-xl-6 col-lg-6">
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                        <h6 class="m-0 font-weight-bold text-primary">
+                            <i class="fas fa-chart-pie me-2"></i>
+                            Servicios por Tipo
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-pie pt-4 pb-2">
+                            <canvas id="tiposChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Funcionalidad de Perfil -->
+            <div class="col-xl-6 col-lg-6">
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                        <h6 class="m-0 font-weight-bold text-info">
+                            <i class="fas fa-user me-2"></i>
+                            Mi Perfil - Funcionalidad de Logout <span class="badge bg-info">VERIFICADO</span>
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <p>La funcionalidad de cerrar sesión ya está implementada en la sección "Mi Perfil":</p>
+                        <div class="d-grid">
+                            <a href="#" class="btn btn-danger" onclick="alert('Funcionalidad de logout ya implementada!')">
+                                <i class="fas fa-sign-out-alt me-2"></i>
+                                Cerrar Sesión
+                            </a>
+                        </div>
+                        <small class="text-muted mt-2 d-block">
+                            Esta funcionalidad ya existía en views/profile/index.php línea 134-138
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Datos demo para las gráficas
+        const ventasData = [
+            {mes: '2024-01', total: 15000},
+            {mes: '2024-02', total: 18000},
+            {mes: '2024-03', total: 22000},
+            {mes: '2024-04', total: 17000},
+            {mes: '2024-05', total: 25000},
+            {mes: '2024-06', total: 28000}
+        ];
+
+        const renovacionesData = [
+            {mes: '2024-01', renovados: 8, no_renovados: 2},
+            {mes: '2024-02', renovados: 12, no_renovados: 3},
+            {mes: '2024-03', renovados: 15, no_renovados: 1},
+            {mes: '2024-04', renovados: 10, no_renovados: 4},
+            {mes: '2024-05', renovados: 18, no_renovados: 2},
+            {mes: '2024-06', renovados: 20, no_renovados: 1}
+        ];
+
+        const tiposData = [
+            {nombre: 'Hosting', cantidad: 25},
+            {nombre: 'Dominio', cantidad: 15},
+            {nombre: 'Email', cantidad: 10},
+            {nombre: 'SSL', cantidad: 8}
+        ];
+
+        // Gráfica de ventas por mes
+        const ctxVentas = document.getElementById('ventasChart').getContext('2d');
+        const ventasChart = new Chart(ctxVentas, {
+            type: 'line',
+            data: {
+                labels: ventasData.map(item => {
+                    const fecha = new Date(item.mes + '-01');
+                    return fecha.toLocaleDateString('es-ES', { month: 'short', year: '2-digit' });
+                }),
+                datasets: [{
+                    label: 'Ingresos',
+                    data: ventasData.map(item => item.total),
+                    borderColor: 'rgb(37, 99, 235)',
+                    backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '$' + value.toLocaleString();
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Gráfica de servicios renovados
+        const ctxRenovaciones = document.getElementById('renovacionesChart').getContext('2d');
+        const renovacionesChart = new Chart(ctxRenovaciones, {
+            type: 'bar',
+            data: {
+                labels: renovacionesData.map(item => {
+                    const fecha = new Date(item.mes + '-01');
+                    return fecha.toLocaleDateString('es-ES', { month: 'short', year: '2-digit' });
+                }),
+                datasets: [{
+                    label: 'Renovados',
+                    data: renovacionesData.map(item => item.renovados),
+                    backgroundColor: 'rgba(34, 197, 94, 0.8)',
+                    borderColor: 'rgb(34, 197, 94)',
+                    borderWidth: 1
+                }, {
+                    label: 'No Renovados',
+                    data: renovacionesData.map(item => item.no_renovados),
+                    backgroundColor: 'rgba(239, 68, 68, 0.8)',
+                    borderColor: 'rgb(239, 68, 68)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                }
+            }
+        });
+
+        // Gráfica de servicios por tipo
+        const ctxTipos = document.getElementById('tiposChart').getContext('2d');
+        const tiposChart = new Chart(ctxTipos, {
+            type: 'doughnut',
+            data: {
+                labels: tiposData.map(item => item.nombre),
+                datasets: [{
+                    data: tiposData.map(item => item.cantidad),
+                    backgroundColor: [
+                        '#2563eb',
+                        '#059669',
+                        '#d97706',
+                        '#dc2626'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+
+        // Función para limpiar filtros
+        function resetFilters() {
+            document.getElementById('fecha_inicio').value = '';
+            document.getElementById('fecha_fin').value = '';
+            alert('Filtros limpiados. En el sistema real, esto recarga la página con filtros vacíos.');
+        }
+    </script>
+</body>
+</html>
