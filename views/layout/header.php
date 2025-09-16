@@ -130,6 +130,7 @@
                         <?= $_SESSION['user_name'] ?? 'Usuario' ?>
                     </a>
                     <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="<?= BASE_URL ?>perfil"><i class="fas fa-user me-2"></i> Mi Perfil</a></li>
                         <li><a class="dropdown-item" href="<?= BASE_URL ?>configuracion"><i class="fas fa-cog me-2"></i> Configuración</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="<?= BASE_URL ?>logout"><i class="fas fa-sign-out-alt me-2"></i> Cerrar Sesión</a></li>

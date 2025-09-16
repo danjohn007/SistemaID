@@ -173,6 +173,18 @@ try {
         case 'configuracion':
             requireAdmin();
             $controller = new ConfiguracionController();
+            if ($subaction === 'test_email') {
+                header('Content-Type: application/json');
+                echo $controller->testEmail();
+                exit;
+            } else {
+                $controller->index();
+            }
+            break;
+            
+        case 'perfil':
+            requireAuth();
+            $controller = new PerfilController();
             $controller->index();
             break;
             
