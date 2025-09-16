@@ -1,15 +1,17 @@
 -- Mejoras a la tabla de notificaciones
--- Agregar campo para datos adicionales (JSON)
+-- Compatible con MySQL 5.7+
 
-USE sistema_id;
-
--- Agregar columna para datos adicionales si no existe
+-- Agregar columna para datos adicionales (solo si no existe)
 ALTER TABLE notificaciones 
-ADD COLUMN IF NOT EXISTS datos_adicionales JSON NULL COMMENT 'Datos adicionales como message_id, respuestas API, etc.';
+ADD COLUMN datos_adicionales JSON NULL COMMENT 'Datos adicionales como message_id, respuestas API, etc.'
+AFTER mensaje;
 
--- Actualizar índices para optimización
-CREATE INDEX IF NOT EXISTS idx_notificaciones_tipo_estado ON notificaciones(tipo, estado);
-CREATE INDEX IF NOT EXISTS idx_notificaciones_servicio_tipo ON notificaciones(servicio_id, tipo);
+-- Crear índices solo si no existen
+-- MySQL <= 8.0 no soporta IF NOT EXISTS en CREATE INDEX
+-- Debes verificar manualmente si existen antes de crear:
+-- (Si usas un script, pon DROP INDEX IF EXISTS antes, o ignora el error)
+CREATE INDEX idx_notificaciones_tipo_estado ON notificaciones(tipo, estado);
+CREATE INDEX idx_notificaciones_servicio_tipo ON notificaciones(servicio_id, tipo);
 
 -- Insertar configuraciones por defecto para notificaciones si no existen
 INSERT IGNORE INTO configuraciones (clave, valor, descripcion) VALUES
@@ -85,9 +87,8 @@ ORDER BY fecha DESC, n.tipo;
 
 -- Procedimiento almacenado para limpiar notificaciones antiguas
 DELIMITER //
-CREATE PROCEDURE IF NOT EXISTS LimpiarNotificacionesAntiguas(IN dias_antiguedad INT)
+CREATE PROCEDURE LimpiarNotificacionesAntiguas(IN dias_antiguedad INT)
 BEGIN
-    DECLARE done INT DEFAULT FALSE;
     DECLARE eliminadas_enviadas INT DEFAULT 0;
     DECLARE eliminadas_fallidas INT DEFAULT 0;
     
