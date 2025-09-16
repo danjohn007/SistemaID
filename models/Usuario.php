@@ -71,6 +71,11 @@ class Usuario {
         $stmt->execute([$id]);
     }
     
+    public function updateLastConnection($id) {
+        $stmt = $this->db->prepare("UPDATE usuarios SET ultima_conexion = NOW() WHERE id = ?");
+        return $stmt->execute([$id]);
+    }
+    
     public function updateProfile($id, $data) {
         $stmt = $this->db->prepare("UPDATE usuarios SET nombre = ?, email = ? WHERE id = ?");
         return $stmt->execute([

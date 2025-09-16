@@ -129,6 +129,14 @@ include 'views/layout/header.php';
                     </div>
                 </div>
                 <?php endif; ?>
+                
+                <div class="d-grid">
+                    <a href="<?= BASE_URL ?>logout" class="btn btn-danger" 
+                       onclick="return confirm('¿Está seguro que desea cerrar sesión?')">
+                        <i class="fas fa-sign-out-alt me-2"></i>
+                        Cerrar Sesión
+                    </a>
+                </div>
             </div>
         </div>
     </div>
