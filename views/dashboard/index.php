@@ -203,18 +203,18 @@ include 'views/layout/header.php';
         </div>
     </div>
     
-    <!-- Gráfica de Ingresos por Método de Pago -->
+    <!-- Gráfica de Nuevos Clientes -->
     <div class="col-xl-6 col-lg-6">
         <div class="card shadow mb-4">
             <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
                 <h6 class="m-0 font-weight-bold text-info">
-                    <i class="fas fa-credit-card me-2"></i>
-                    Ingresos por Método de Pago
+                    <i class="fas fa-user-plus me-2"></i>
+                    Nuevos Clientes
                 </h6>
             </div>
             <div class="card-body">
                 <div class="chart-area">
-                    <canvas id="metodosChart"></canvas>
+                    <canvas id="clientesChart"></canvas>
                 </div>
             </div>
         </div>
@@ -386,7 +386,7 @@ include 'views/layout/header.php';
 const ventasData = <?= json_encode($data['ventas_por_mes'] ?? []) ?>;
 const tiposData = <?= json_encode($data['servicios_por_tipo'] ?? []) ?>;
 const renovacionesData = <?= json_encode($data['servicios_renovados'] ?? []) ?>;
-const metodosData = <?= json_encode($data['estadisticas_ingresos'] ?? []) ?>;
+const nuevosClientesData = <?= json_encode($data['nuevos_clientes'] ?? []) ?>;
 
 // Gráfica de ventas por mes
 const ctxVentas = document.getElementById('ventasChart').getContext('2d');
@@ -509,41 +509,32 @@ const tiposChart = new Chart(ctxTipos, {
     }
 });
 
-// Gráfica de métodos de pago
-const ctxMetodos = document.getElementById('metodosChart').getContext('2d');
-const metodosChart = new Chart(ctxMetodos, {
-    type: 'doughnut',
+// Gráfica de nuevos clientes
+const ctxClientes = document.getElementById('clientesChart').getContext('2d');
+const clientesChart = new Chart(ctxClientes, {
+    type: 'bar',
     data: {
-        labels: metodosData.map(item => item.metodo_pago || 'Sin especificar'),
+        labels: nuevosClientesData.map(item => item.mes_nombre || 'Sin definir'),
         datasets: [{
-            data: metodosData.map(item => item.total),
-            backgroundColor: [
-                '#3b82f6',
-                '#10b981',
-                '#f59e0b',
-                '#ef4444',
-                '#8b5cf6',
-                '#06b6d4',
-                '#84cc16'
-            ]
+            label: 'Nuevos Clientes',
+            data: nuevosClientesData.map(item => item.cantidad),
+            backgroundColor: 'rgba(6, 182, 212, 0.8)',
+            borderColor: 'rgb(6, 182, 212)',
+            borderWidth: 1
         }]
     },
     options: {
         responsive: true,
         plugins: {
             legend: {
-                position: 'bottom'
-            },
-            tooltip: {
-                callbacks: {
-                    label: function(context) {
-                        const label = context.label || '';
-                        const value = '$' + context.parsed.toLocaleString();
-                        const dataset = context.dataset.data;
-                        const total = dataset.reduce((a, b) => a + b, 0);
-                        const percentage = ((context.parsed / total) * 100).toFixed(1);
-                        return `${label}: ${value} (${percentage}%)`;
-                    }
+                display: false
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    stepSize: 1
                 }
             }
         }

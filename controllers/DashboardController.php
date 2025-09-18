@@ -33,7 +33,7 @@ class DashboardController {
         $ventasPorMes = $this->getVentasPorMes($fechaInicio, $fechaFin);
         $serviciosPorTipo = $this->getServiciosPorTipo();
         $serviciosRenovados = $this->getServiciosRenovados($fechaInicio, $fechaFin);
-        $estadisticasIngresos = $this->getEstadisticasIngresos($fechaInicio, $fechaFin);
+        $nuevosClientes = $this->getNuevosClientes($fechaInicio, $fechaFin);
         
         $data = [
             'total_clientes' => $totalClientes,
@@ -44,7 +44,7 @@ class DashboardController {
             'ventas_por_mes' => $ventasPorMes,
             'servicios_por_tipo' => $serviciosPorTipo,
             'servicios_renovados' => $serviciosRenovados,
-            'estadisticas_ingresos' => $estadisticasIngresos,
+            'nuevos_clientes' => $nuevosClientes,
             'fecha_inicio' => $fechaInicio,
             'fecha_fin' => $fechaFin
         ];
@@ -60,7 +60,7 @@ class DashboardController {
             $stmt = $db->query("
                 SELECT 
                     DATE_FORMAT(fecha_pago, '%Y-%m-%d') as fecha,
-                    SUM(monto) as total
+                    SUM(COALESCE(subtotal, monto)) as total
                 FROM pagos 
                 WHERE estado = 'pagado' 
                 AND fecha_pago >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
@@ -73,7 +73,7 @@ class DashboardController {
         $stmt = $db->prepare("
             SELECT 
                 DATE_FORMAT(fecha_pago, '%Y-%m-%d') as fecha,
-                SUM(monto) as total
+                SUM(COALESCE(subtotal, monto)) as total
             FROM pagos 
             WHERE estado = 'pagado' 
             AND fecha_pago >= ? 
@@ -131,13 +131,16 @@ class DashboardController {
         $stmtNuevos->execute([$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59']);
         $nuevos = $stmtNuevos->fetchColumn();
         
-        // Obtener servicios pendientes (por vencer en los próximos 30 días)
+        // Obtener servicios pendientes (por vencer en los próximos 30 días + vencidos)
         $stmtPendientes = $db->prepare("
             SELECT 
                 COUNT(*) as pendientes
             FROM servicios 
-            WHERE estado = 'activo' 
-            AND fecha_vencimiento BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 30 DAY)
+            WHERE estado IN ('activo', 'vencido') 
+            AND (
+                (fecha_vencimiento BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 30 DAY))
+                OR (fecha_vencimiento < CURDATE() AND estado = 'vencido')
+            )
         ");
         $stmtPendientes->execute();
         $pendientes = $stmtPendientes->fetchColumn();
@@ -172,18 +175,42 @@ class DashboardController {
             $fechaFin = date('Y-m-d');
         }
         
-        // Obtener ingresos por método de pago
+        // Obtener ingresos por método de pago (usar subtotal para excluir IVA)
         $stmt = $db->prepare("
             SELECT 
                 metodo_pago,
                 COUNT(*) as cantidad,
-                SUM(monto) as total
+                SUM(COALESCE(subtotal, monto)) as total
             FROM pagos 
             WHERE estado = 'pagado' 
             AND fecha_pago BETWEEN ? AND ?
             AND metodo_pago IS NOT NULL
             GROUP BY metodo_pago
             ORDER BY total DESC
+        ");
+        $stmt->execute([$fechaInicio, $fechaFin]);
+        return $stmt->fetchAll();
+    }
+    
+    private function getNuevosClientes($fechaInicio = null, $fechaFin = null) {
+        $db = Database::getInstance()->getConnection();
+        
+        // Si no se proporcionan fechas, usar últimos 30 días
+        if (!$fechaInicio || !$fechaFin) {
+            $fechaInicio = date('Y-m-d', strtotime('-30 days'));
+            $fechaFin = date('Y-m-d');
+        }
+        
+        // Obtener nuevos clientes por mes
+        $stmt = $db->prepare("
+            SELECT 
+                DATE_FORMAT(fecha_creacion, '%Y-%m') as mes,
+                DATE_FORMAT(fecha_creacion, '%M %Y') as mes_nombre,
+                COUNT(*) as cantidad
+            FROM clientes 
+            WHERE fecha_creacion BETWEEN ? AND ?
+            GROUP BY DATE_FORMAT(fecha_creacion, '%Y-%m')
+            ORDER BY mes ASC
         ");
         $stmt->execute([$fechaInicio, $fechaFin]);
         return $stmt->fetchAll();

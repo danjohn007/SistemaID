@@ -62,8 +62,13 @@ class ServiciosController {
                     // Obtener el ID del servicio recién creado
                     $servicioId = Database::getInstance()->getConnection()->lastInsertId();
                     
-                    // Programar notificaciones automáticas para el nuevo servicio
-                    $this->programarNotificacionesServicio($servicioId);
+                    // Programar notificaciones automáticas para el nuevo servicio (no crítico)
+                    try {
+                        $this->programarNotificacionesServicio($servicioId);
+                    } catch (Exception $e) {
+                        // Log error but don't fail service creation
+                        error_log("Warning: Could not program notifications for service $servicioId: " . $e->getMessage());
+                    }
                     
                     header('Location: ' . BASE_URL . 'servicios?success=Servicio creado exitosamente');
                     exit();
