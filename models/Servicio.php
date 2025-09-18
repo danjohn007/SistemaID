@@ -33,7 +33,7 @@ class Servicio {
     }
     
     public function findAll($clienteId = null, $limit = null, $offset = 0, $searchTerm = null) {
-        $sql = "SELECT s.*, c.nombre_razon_social, ts.nombre as tipo_servicio_nombre 
+        $sql = "SELECT s.*, c.nombre_razon_social, c.email, c.telefono, ts.nombre as tipo_servicio_nombre 
                 FROM servicios s 
                 INNER JOIN clientes c ON s.cliente_id = c.id 
                 INNER JOIN tipos_servicios ts ON s.tipo_servicio_id = ts.id 
@@ -65,7 +65,7 @@ class Servicio {
     
     public function findById($id) {
         $stmt = $this->db->prepare("
-            SELECT s.*, c.nombre_razon_social, ts.nombre as tipo_servicio_nombre 
+            SELECT s.*, c.nombre_razon_social, c.email, c.telefono, ts.nombre as tipo_servicio_nombre 
             FROM servicios s 
             INNER JOIN clientes c ON s.cliente_id = c.id 
             INNER JOIN tipos_servicios ts ON s.tipo_servicio_id = ts.id 
