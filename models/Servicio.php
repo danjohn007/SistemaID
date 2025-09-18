@@ -14,15 +14,16 @@ class Servicio {
         $fechaVencimiento = $this->calcularFechaVencimiento($data['fecha_inicio'], $data['periodo_vencimiento']);
         
         $stmt = $this->db->prepare("
-            INSERT INTO servicios (cliente_id, tipo_servicio_id, nombre, descripcion, monto, 
+            INSERT INTO servicios (cliente_id, tipo_servicio_id, nombre, descripcion, dominio, monto, 
                                  periodo_vencimiento, fecha_inicio, fecha_vencimiento, fecha_proximo_vencimiento) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         return $stmt->execute([
             $data['cliente_id'],
             $data['tipo_servicio_id'],
             $data['nombre'],
             $data['descripcion'] ?? null,
+            $data['dominio'] ?? null,
             $data['monto'],
             $data['periodo_vencimiento'],
             $data['fecha_inicio'],
@@ -31,7 +32,7 @@ class Servicio {
         ]);
     }
     
-    public function findAll($clienteId = null, $limit = null, $offset = 0) {
+    public function findAll($clienteId = null, $limit = null, $offset = 0, $searchTerm = null) {
         $sql = "SELECT s.*, c.nombre_razon_social, ts.nombre as tipo_servicio_nombre 
                 FROM servicios s 
                 INNER JOIN clientes c ON s.cliente_id = c.id 
@@ -43,6 +44,12 @@ class Servicio {
         if ($clienteId) {
             $sql .= " AND s.cliente_id = ?";
             $params[] = $clienteId;
+        }
+        
+        if ($searchTerm) {
+            $sql .= " AND (s.nombre LIKE ? OR s.descripcion LIKE ? OR s.dominio LIKE ? OR c.nombre_razon_social LIKE ?)";
+            $searchParam = '%' . $searchTerm . '%';
+            $params = array_merge($params, [$searchParam, $searchParam, $searchParam, $searchParam]);
         }
         
         $sql .= " ORDER BY s.fecha_vencimiento ASC";
@@ -74,7 +81,7 @@ class Servicio {
         
         $stmt = $this->db->prepare("
             UPDATE servicios 
-            SET cliente_id = ?, tipo_servicio_id = ?, nombre = ?, descripcion = ?, 
+            SET cliente_id = ?, tipo_servicio_id = ?, nombre = ?, descripcion = ?, dominio = ?,
                 monto = ?, periodo_vencimiento = ?, fecha_inicio = ?, 
                 fecha_vencimiento = ?, fecha_proximo_vencimiento = ?, estado = ? 
             WHERE id = ?
@@ -84,6 +91,7 @@ class Servicio {
             $data['tipo_servicio_id'],
             $data['nombre'],
             $data['descripcion'] ?? null,
+            $data['dominio'] ?? null,
             $data['monto'],
             $data['periodo_vencimiento'],
             $data['fecha_inicio'],

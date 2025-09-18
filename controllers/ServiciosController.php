@@ -17,17 +17,19 @@ class ServiciosController {
     
     public function index() {
         $clienteId = $_GET['cliente_id'] ?? null;
+        $searchTerm = $_GET['search'] ?? null;
         $page = (int)($_GET['page'] ?? 1);
         $limit = 20;
         $offset = ($page - 1) * $limit;
         
-        $servicios = $this->servicioModel->findAll($clienteId, $limit, $offset);
+        $servicios = $this->servicioModel->findAll($clienteId, $limit, $offset, $searchTerm);
         $clientes = $this->clienteModel->findAll();
         
         $data = [
             'servicios' => $servicios,
             'clientes' => $clientes,
             'cliente_selected' => $clienteId,
+            'search_term' => $searchTerm,
             'current_page' => $page
         ];
         
@@ -45,6 +47,7 @@ class ServiciosController {
                 'tipo_servicio_id' => $_POST['tipo_servicio_id'] ?? '',
                 'nombre' => $_POST['nombre'] ?? '',
                 'descripcion' => $_POST['descripcion'] ?? '',
+                'dominio' => $_POST['dominio'] ?? '',
                 'monto' => $_POST['monto'] ?? '',
                 'periodo_vencimiento' => $_POST['periodo_vencimiento'] ?? 'anual',
                 'fecha_inicio' => $_POST['fecha_inicio'] ?? date('Y-m-d')
@@ -98,6 +101,7 @@ class ServiciosController {
                 'tipo_servicio_id' => $_POST['tipo_servicio_id'] ?? '',
                 'nombre' => $_POST['nombre'] ?? '',
                 'descripcion' => $_POST['descripcion'] ?? '',
+                'dominio' => $_POST['dominio'] ?? '',
                 'monto' => $_POST['monto'] ?? '',
                 'periodo_vencimiento' => $_POST['periodo_vencimiento'] ?? 'anual',
                 'fecha_inicio' => $_POST['fecha_inicio'] ?? '',

@@ -203,9 +203,21 @@ include 'views/layout/header.php';
         </div>
     </div>
     
-    <!-- Espacio adicional o futuras gráficas -->
+    <!-- Gráfica de Ingresos por Método de Pago -->
     <div class="col-xl-6 col-lg-6">
-        <!-- Espacio reservado para futuras mejoras -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-info">
+                    <i class="fas fa-credit-card me-2"></i>
+                    Ingresos por Método de Pago
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="chart-area">
+                    <canvas id="metodosChart"></canvas>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -374,6 +386,7 @@ include 'views/layout/header.php';
 const ventasData = <?= json_encode($data['ventas_por_mes'] ?? []) ?>;
 const tiposData = <?= json_encode($data['servicios_por_tipo'] ?? []) ?>;
 const renovacionesData = <?= json_encode($data['servicios_renovados'] ?? []) ?>;
+const metodosData = <?= json_encode($data['estadisticas_ingresos'] ?? []) ?>;
 
 // Gráfica de ventas por mes
 const ctxVentas = document.getElementById('ventasChart').getContext('2d');
@@ -381,8 +394,8 @@ const ventasChart = new Chart(ctxVentas, {
     type: 'line',
     data: {
         labels: ventasData.map(item => {
-            const fecha = new Date(item.mes + '-01');
-            return fecha.toLocaleDateString('es-ES', { month: 'short', year: '2-digit' });
+            const fecha = new Date(item.fecha);
+            return fecha.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
         }),
         datasets: [{
             label: 'Ingresos',
@@ -396,6 +409,10 @@ const ventasChart = new Chart(ctxVentas, {
     options: {
         responsive: true,
         plugins: {
+            title: {
+                display: true,
+                text: `Ingresos Diarios (${ventasData.length > 0 ? new Date(ventasData[0].fecha).toLocaleDateString('es-ES') : ''} - ${ventasData.length > 0 ? new Date(ventasData[ventasData.length-1].fecha).toLocaleDateString('es-ES') : ''})`
+            },
             legend: {
                 display: false
             }
@@ -418,33 +435,39 @@ const ctxRenovaciones = document.getElementById('renovacionesChart').getContext(
 const renovacionesChart = new Chart(ctxRenovaciones, {
     type: 'bar',
     data: {
-        labels: renovacionesData.map(item => {
-            if (item.mes) {
-                const fecha = new Date(item.mes + '-01');
-                return fecha.toLocaleDateString('es-ES', { month: 'short', year: '2-digit' });
-            }
-            return 'Sin datos';
-        }),
+        labels: ['Renovados', 'Nuevos', 'Pendientes', 'Cancelados'],
         datasets: [{
-            label: 'Renovados',
-            data: renovacionesData.map(item => item.renovados || 0),
-            backgroundColor: 'rgba(34, 197, 94, 0.8)',
-            borderColor: 'rgb(34, 197, 94)',
-            borderWidth: 1
-        }, {
-            label: 'No Renovados',
-            data: renovacionesData.map(item => item.no_renovados || 0),
-            backgroundColor: 'rgba(239, 68, 68, 0.8)',
-            borderColor: 'rgb(239, 68, 68)',
+            label: 'Cantidad',
+            data: [
+                renovacionesData.renovados || 0,
+                renovacionesData.nuevos || 0, 
+                renovacionesData.pendientes || 0,
+                renovacionesData.cancelados || 0
+            ],
+            backgroundColor: [
+                'rgba(34, 197, 94, 0.8)',
+                'rgba(59, 130, 246, 0.8)',
+                'rgba(251, 191, 36, 0.8)',
+                'rgba(239, 68, 68, 0.8)'
+            ],
+            borderColor: [
+                'rgb(34, 197, 94)',
+                'rgb(59, 130, 246)',
+                'rgb(251, 191, 36)',
+                'rgb(239, 68, 68)'
+            ],
             borderWidth: 1
         }]
     },
     options: {
         responsive: true,
         plugins: {
-            legend: {
+            title: {
                 display: true,
-                position: 'top'
+                text: `Servicios (${renovacionesData.fecha_inicio} al ${renovacionesData.fecha_fin})`
+            },
+            legend: {
+                display: false
             }
         },
         scales: {
@@ -481,6 +504,47 @@ const tiposChart = new Chart(ctxTipos, {
         plugins: {
             legend: {
                 position: 'bottom'
+            }
+        }
+    }
+});
+
+// Gráfica de métodos de pago
+const ctxMetodos = document.getElementById('metodosChart').getContext('2d');
+const metodosChart = new Chart(ctxMetodos, {
+    type: 'doughnut',
+    data: {
+        labels: metodosData.map(item => item.metodo_pago || 'Sin especificar'),
+        datasets: [{
+            data: metodosData.map(item => item.total),
+            backgroundColor: [
+                '#3b82f6',
+                '#10b981',
+                '#f59e0b',
+                '#ef4444',
+                '#8b5cf6',
+                '#06b6d4',
+                '#84cc16'
+            ]
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: {
+                position: 'bottom'
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        const label = context.label || '';
+                        const value = '$' + context.parsed.toLocaleString();
+                        const dataset = context.dataset.data;
+                        const total = dataset.reduce((a, b) => a + b, 0);
+                        const percentage = ((context.parsed / total) * 100).toFixed(1);
+                        return `${label}: ${value} (${percentage}%)`;
+                    }
+                }
             }
         }
     }

@@ -83,7 +83,7 @@ $servicios = $data['servicios'] ?? [];
                         <div class="col-md-6 mb-3">
                             <label for="monto" class="form-label">
                                 <i class="fas fa-dollar-sign me-1 text-success"></i>
-                                Monto <span class="text-danger">*</span>
+                                Monto (Subtotal) <span class="text-danger">*</span>
                             </label>
                             <div class="input-group">
                                 <span class="input-group-text">$</span>
@@ -97,6 +97,38 @@ $servicios = $data['servicios'] ?? [];
                             </div>
                         </div>
                         
+                        <!-- Requiere Factura -->
+                        <div class="col-md-6 mb-3 d-flex align-items-center">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="1" id="requiere_factura" name="requiere_factura">
+                                <label class="form-check-label" for="requiere_factura">
+                                    <i class="fas fa-receipt me-1 text-warning"></i>
+                                    Requiere Factura (+ 16% IVA)
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Información de Total -->
+                    <div class="row" id="total-info" style="display: none;">
+                        <div class="col-12 mb-3">
+                            <div class="alert alert-info">
+                                <div class="row">
+                                    <div class="col-4">
+                                        <strong>Subtotal:</strong> $<span id="subtotal-display">0.00</span>
+                                    </div>
+                                    <div class="col-4">
+                                        <strong>IVA (16%):</strong> $<span id="iva-display">0.00</span>
+                                    </div>
+                                    <div class="col-4">
+                                        <strong>Total:</strong> $<span id="total-display">0.00</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
                         <!-- Fecha de Pago -->
                         <div class="col-md-6 mb-3">
                             <label for="fecha_pago" class="form-label">
@@ -106,7 +138,6 @@ $servicios = $data['servicios'] ?? [];
                             <input type="date" class="form-control" id="fecha_pago" name="fecha_pago" 
                                    value="<?= date('Y-m-d') ?>">
                         </div>
-                    </div>
                     
                     <div class="row">
                         <!-- Método de Pago -->
@@ -188,6 +219,33 @@ document.addEventListener('DOMContentLoaded', function() {
     const montoInput = document.getElementById('monto');
     const servicioInfo = document.getElementById('servicio-info');
     const servicioDetails = document.getElementById('servicio-details');
+    const requiereFacturaCheckbox = document.getElementById('requiere_factura');
+    const totalInfo = document.getElementById('total-info');
+    const subtotalDisplay = document.getElementById('subtotal-display');
+    const ivaDisplay = document.getElementById('iva-display');
+    const totalDisplay = document.getElementById('total-display');
+    
+    // Función para calcular y mostrar totales
+    function calcularTotales() {
+        const subtotal = parseFloat(montoInput.value) || 0;
+        const requiereFactura = requiereFacturaCheckbox.checked;
+        
+        if (requiereFactura && subtotal > 0) {
+            const iva = subtotal * 0.16;
+            const total = subtotal + iva;
+            
+            subtotalDisplay.textContent = subtotal.toFixed(2);
+            ivaDisplay.textContent = iva.toFixed(2);
+            totalDisplay.textContent = total.toFixed(2);
+            totalInfo.style.display = 'block';
+        } else {
+            totalInfo.style.display = 'none';
+        }
+    }
+    
+    // Event listeners para recalcular totales
+    montoInput.addEventListener('input', calcularTotales);
+    requiereFacturaCheckbox.addEventListener('change', calcularTotales);
     
     // Actualizar información cuando se selecciona un servicio
     servicioSelect.addEventListener('change', function() {
@@ -199,6 +257,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Actualizar el monto sugerido
             montoInput.value = monto;
+            calcularTotales(); // Recalcular después de cambiar el monto
             
             // Mostrar información del servicio
             servicioDetails.innerHTML = `

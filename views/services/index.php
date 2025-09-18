@@ -21,9 +21,9 @@ include 'views/layout/header.php';
 
 <!-- Filtros -->
 <div class="row mb-4">
-    <div class="col-md-6">
-        <form method="GET" class="d-flex">
-            <select name="cliente_id" class="form-select me-2">
+    <div class="col-md-8">
+        <form method="GET" class="d-flex flex-wrap gap-2">
+            <select name="cliente_id" class="form-select" style="max-width: 250px;">
                 <option value="">Todos los clientes</option>
                 <?php foreach ($data['clientes'] as $cliente): ?>
                 <option value="<?= $cliente['id'] ?>" <?= ($data['cliente_selected'] == $cliente['id']) ? 'selected' : '' ?>>
@@ -31,17 +31,19 @@ include 'views/layout/header.php';
                 </option>
                 <?php endforeach; ?>
             </select>
+            <input type="text" name="search" class="form-control" placeholder="Buscar por nombre, dominio, cliente..." 
+                   value="<?= htmlspecialchars($data['search_term'] ?? '') ?>" style="max-width: 300px;">
             <button type="submit" class="btn btn-outline-secondary">
-                <i class="fas fa-filter"></i>
+                <i class="fas fa-search"></i>
             </button>
-            <?php if (!empty($data['cliente_selected'])): ?>
-            <a href="<?= BASE_URL ?>servicios" class="btn btn-outline-danger ms-2">
-                <i class="fas fa-times"></i>
+            <?php if (!empty($data['cliente_selected']) || !empty($data['search_term'])): ?>
+            <a href="<?= BASE_URL ?>servicios" class="btn btn-outline-danger">
+                <i class="fas fa-times"></i> Limpiar
             </a>
             <?php endif; ?>
         </form>
     </div>
-    <div class="col-md-6 text-end">
+    <div class="col-md-4 text-end">
         <span class="text-muted">
             Total: <?= count($data['servicios']) ?> servicios
         </span>

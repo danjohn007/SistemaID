@@ -42,6 +42,7 @@ class PagosController {
             $data = [
                 'servicio_id' => $_POST['servicio_id'] ?? '',
                 'monto' => $_POST['monto'] ?? '',
+                'requiere_factura' => isset($_POST['requiere_factura']) ? 1 : 0,
                 'fecha_pago' => $_POST['fecha_pago'] ?? date('Y-m-d'),
                 'metodo_pago' => $_POST['metodo_pago'] ?? '',
                 'referencia' => $_POST['referencia'] ?? '',
@@ -55,7 +56,8 @@ class PagosController {
                     $data['servicio_id'], 
                     $data['monto'], 
                     $data['metodo_pago'], 
-                    $data['referencia']
+                    $data['referencia'],
+                    $data['requiere_factura']
                 )) {
                     header('Location: ' . BASE_URL . 'pagos?success=Pago registrado exitosamente');
                     exit();
@@ -91,6 +93,7 @@ class PagosController {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $data = [
                 'monto' => $_POST['monto'] ?? '',
+                'requiere_factura' => isset($_POST['requiere_factura']) ? 1 : 0,
                 'fecha_pago' => $_POST['fecha_pago'] ?? '',
                 'fecha_vencimiento' => $_POST['fecha_vencimiento'] ?? '',
                 'estado' => $_POST['estado'] ?? '',
