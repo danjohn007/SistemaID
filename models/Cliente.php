@@ -26,18 +26,36 @@ class Cliente {
     }
     
     public function findAll($limit = null, $offset = 0) {
-        $sql = "SELECT c.*, u.nombre as usuario_nombre 
-                FROM clientes c 
-                LEFT JOIN usuarios u ON c.usuario_id = u.id 
-                WHERE c.activo = 1 
-                ORDER BY c.nombre_razon_social ASC";
-        
-        if ($limit) {
-            $sql .= " LIMIT $limit OFFSET $offset";
+        try {
+            $sql = "SELECT c.*, u.nombre as usuario_nombre 
+                    FROM clientes c 
+                    LEFT JOIN usuarios u ON c.usuario_id = u.id 
+                    WHERE c.activo = 1 
+                    ORDER BY c.nombre_razon_social ASC";
+            
+            if ($limit) {
+                $sql .= " LIMIT $limit OFFSET $offset";
+            }
+            
+            $stmt = $this->db->query($sql);
+            return $stmt->fetchAll();
+        } catch (PDOException $e) {
+            // If usuarios table doesn't exist, try without the join
+            if (strpos($e->getMessage(), 'usuarios') !== false) {
+                $sql = "SELECT c.*, '' as usuario_nombre 
+                        FROM clientes c 
+                        WHERE c.activo = 1 
+                        ORDER BY c.nombre_razon_social ASC";
+                
+                if ($limit) {
+                    $sql .= " LIMIT $limit OFFSET $offset";
+                }
+                
+                $stmt = $this->db->query($sql);
+                return $stmt->fetchAll();
+            }
+            throw $e;
         }
-        
-        $stmt = $this->db->query($sql);
-        return $stmt->fetchAll();
     }
     
     public function findById($id) {

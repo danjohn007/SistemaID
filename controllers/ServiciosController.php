@@ -38,37 +38,80 @@ class ServiciosController {
     
     public function nuevo() {
         $error = '';
-        $clientes = $this->clienteModel->findAll();
-        $tiposServicio = $this->tipoServicioModel->findAll();
+        
+        try {
+            $clientes = $this->clienteModel->findAll();
+            $tiposServicio = $this->tipoServicioModel->findAll();
+        } catch (Exception $e) {
+            $error = 'Error al cargar datos del formulario: ' . $e->getMessage();
+            if (DEBUG_MODE) {
+                error_log("Error cargando datos para nuevo servicio: " . $e->getMessage());
+            }
+            $clientes = [];
+            $tiposServicio = [];
+        }
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $data = [
-                'cliente_id' => $_POST['cliente_id'] ?? '',
-                'tipo_servicio_id' => $_POST['tipo_servicio_id'] ?? '',
-                'nombre' => $_POST['nombre'] ?? '',
-                'descripcion' => $_POST['descripcion'] ?? '',
-                'dominio' => $_POST['dominio'] ?? '',
-                'monto' => $_POST['monto'] ?? '',
-                'periodo_vencimiento' => $_POST['periodo_vencimiento'] ?? 'anual',
-                'fecha_inicio' => $_POST['fecha_inicio'] ?? date('Y-m-d')
-            ];
-            
-            // Validaciones
-            if (empty($data['cliente_id']) || empty($data['tipo_servicio_id']) || 
-                empty($data['nombre']) || empty($data['monto'])) {
-                $error = 'Todos los campos obligatorios deben ser completados.';
-            } else {
-                if ($this->servicioModel->create($data)) {
-                    // Obtener el ID del servicio recién creado
-                    $servicioId = Database::getInstance()->getConnection()->lastInsertId();
-                    
-                    // Programar notificaciones automáticas para el nuevo servicio
-                    $this->programarNotificacionesServicio($servicioId);
-                    
-                    header('Location: ' . BASE_URL . 'servicios?success=Servicio creado exitosamente');
-                    exit();
+            try {
+                $data = [
+                    'cliente_id' => $_POST['cliente_id'] ?? '',
+                    'tipo_servicio_id' => $_POST['tipo_servicio_id'] ?? '',
+                    'nombre' => $_POST['nombre'] ?? '',
+                    'descripcion' => $_POST['descripcion'] ?? '',
+                    'dominio' => $_POST['dominio'] ?? '',
+                    'monto' => $_POST['monto'] ?? '',
+                    'periodo_vencimiento' => $_POST['periodo_vencimiento'] ?? 'anual',
+                    'fecha_inicio' => $_POST['fecha_inicio'] ?? date('Y-m-d')
+                ];
+                
+                // Log form data for debugging
+                if (DEBUG_MODE) {
+                    error_log("Datos del formulario de servicio: " . print_r($data, true));
+                }
+                
+                // Validaciones
+                if (empty($data['cliente_id']) || empty($data['tipo_servicio_id']) || 
+                    empty($data['nombre']) || empty($data['monto'])) {
+                    $error = 'Todos los campos obligatorios deben ser completados.';
                 } else {
-                    $error = 'Error al crear el servicio.';
+                    $createResult = $this->servicioModel->create($data);
+                    
+                    if ($createResult) {
+                        // Obtener el ID del servicio recién creado
+                        $servicioId = Database::getInstance()->getConnection()->lastInsertId();
+                        
+                        if (DEBUG_MODE) {
+                            error_log("Servicio creado exitosamente con ID: $servicioId");
+                        }
+                        
+                        // Programar notificaciones automáticas para el nuevo servicio
+                        try {
+                            $this->programarNotificacionesServicio($servicioId);
+                        } catch (Exception $e) {
+                            if (DEBUG_MODE) {
+                                error_log("Error programando notificaciones: " . $e->getMessage());
+                            }
+                            // No fallar por error en notificaciones
+                        }
+                        
+                        header('Location: ' . BASE_URL . 'servicios?success=Servicio creado exitosamente');
+                        exit();
+                    } else {
+                        $error = 'Error al crear el servicio.';
+                        
+                        // Get more detailed error information
+                        $errorInfo = Database::getInstance()->getConnection()->errorInfo();
+                        if (DEBUG_MODE && $errorInfo[0] !== '00000') {
+                            error_log("Error PDO creando servicio: " . print_r($errorInfo, true));
+                            $error .= ' (' . $errorInfo[2] . ')';
+                        }
+                    }
+                }
+            } catch (Exception $e) {
+                $error = 'Error interno al procesar el formulario: ' . $e->getMessage();
+                if (DEBUG_MODE) {
+                    error_log("Excepción creando servicio: " . $e->getMessage());
+                    error_log("Stack trace: " . $e->getTraceAsString());
                 }
             }
         }
@@ -174,9 +217,17 @@ class ServiciosController {
      */
     private function programarNotificacionesServicio($servicioId) {
         try {
-            $this->notificacionModel->programarNotificacionesVencimiento($servicioId);
+            // Check if notificacionModel exists and has the method
+            if ($this->notificacionModel && method_exists($this->notificacionModel, 'programarNotificacionesVencimiento')) {
+                $this->notificacionModel->programarNotificacionesVencimiento($servicioId);
+            } else {
+                if (DEBUG_MODE) {
+                    error_log("Notificacion model or method not available for service $servicioId");
+                }
+            }
         } catch (Exception $e) {
             error_log("Error programando notificaciones para servicio $servicioId: " . $e->getMessage());
+            // Don't let notification errors prevent service creation
         }
     }
     

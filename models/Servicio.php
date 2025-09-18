@@ -10,26 +10,39 @@ class Servicio {
     }
     
     public function create($data) {
-        // Calcular fecha de vencimiento basada en el período
-        $fechaVencimiento = $this->calcularFechaVencimiento($data['fecha_inicio'], $data['periodo_vencimiento']);
-        
-        $stmt = $this->db->prepare("
-            INSERT INTO servicios (cliente_id, tipo_servicio_id, nombre, descripcion, dominio, monto, 
-                                 periodo_vencimiento, fecha_inicio, fecha_vencimiento, fecha_proximo_vencimiento) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ");
-        return $stmt->execute([
-            $data['cliente_id'],
-            $data['tipo_servicio_id'],
-            $data['nombre'],
-            $data['descripcion'] ?? null,
-            $data['dominio'] ?? null,
-            $data['monto'],
-            $data['periodo_vencimiento'],
-            $data['fecha_inicio'],
-            $fechaVencimiento,
-            $fechaVencimiento
-        ]);
+        try {
+            // Calcular fecha de vencimiento basada en el período
+            $fechaVencimiento = $this->calcularFechaVencimiento($data['fecha_inicio'], $data['periodo_vencimiento']);
+            
+            $stmt = $this->db->prepare("
+                INSERT INTO servicios (cliente_id, tipo_servicio_id, nombre, descripcion, dominio, monto, 
+                                     periodo_vencimiento, fecha_inicio, fecha_vencimiento, fecha_proximo_vencimiento) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ");
+            $result = $stmt->execute([
+                $data['cliente_id'],
+                $data['tipo_servicio_id'],
+                $data['nombre'],
+                $data['descripcion'] ?? null,
+                $data['dominio'] ?? null,
+                $data['monto'],
+                $data['periodo_vencimiento'],
+                $data['fecha_inicio'],
+                $fechaVencimiento,
+                $fechaVencimiento
+            ]);
+            
+            if (!$result && DEBUG_MODE) {
+                error_log("Error ejecutando INSERT servicio: " . print_r($stmt->errorInfo(), true));
+            }
+            
+            return $result;
+        } catch (PDOException $e) {
+            if (DEBUG_MODE) {
+                error_log("Excepción PDO creando servicio: " . $e->getMessage());
+            }
+            return false;
+        }
     }
     
     public function findAll($clienteId = null, $limit = null, $offset = 0, $searchTerm = null) {
