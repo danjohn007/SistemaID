@@ -52,10 +52,13 @@ date_default_timezone_set('America/Mexico_City');
 $httpHost = $_SERVER['HTTP_HOST'] ?? 'localhost';
 if ($httpHost === 'localhost' || strpos($httpHost, '127.0.0.1') !== false) {
     error_reporting(E_ALL);
-    ini_set('display_errors', 1);
+    // Only display errors in CLI mode to avoid breaking web output
+    ini_set('display_errors', php_sapi_name() === 'cli' ? 1 : 0);
+    ini_set('log_errors', 1);
     define('DEBUG_MODE', true);
 } else {
     error_reporting(0);
     ini_set('display_errors', 0);
+    ini_set('log_errors', 1);
     define('DEBUG_MODE', false);
 }

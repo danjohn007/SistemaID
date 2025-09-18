@@ -85,6 +85,7 @@ class ServiciosController {
                         }
                         
                         // Programar notificaciones automáticas para el nuevo servicio
+                        // This is done in a way that won't interfere with the redirect
                         try {
                             $this->programarNotificacionesServicio($servicioId);
                         } catch (Exception $e) {
@@ -92,6 +93,11 @@ class ServiciosController {
                                 error_log("Error programando notificaciones: " . $e->getMessage());
                             }
                             // No fallar por error en notificaciones
+                        }
+                        
+                        // Clear any output buffers to ensure clean redirect
+                        while (ob_get_level() > 0) {
+                            ob_end_clean();
                         }
                         
                         header('Location: ' . BASE_URL . 'servicios?success=Servicio creado exitosamente');
@@ -216,18 +222,61 @@ class ServiciosController {
      * Programar notificaciones automáticas para un servicio nuevo
      */
     private function programarNotificacionesServicio($servicioId) {
+        // Don't let notification programming interfere with service creation
+        // Run this in a completely isolated way
+        if (!$this->notificacionModel || !method_exists($this->notificacionModel, 'programarNotificacionesVencimiento')) {
+            if (DEBUG_MODE) {
+                error_log("Notificacion model or method not available for service $servicioId");
+            }
+            return;
+        }
+        
+        // Create a separate process/context for notification programming
+        // This prevents any errors or output from interfering with the main response
         try {
-            // Check if notificacionModel exists and has the method
-            if ($this->notificacionModel && method_exists($this->notificacionModel, 'programarNotificacionesVencimiento')) {
-                $this->notificacionModel->programarNotificacionesVencimiento($servicioId);
-            } else {
-                if (DEBUG_MODE) {
-                    error_log("Notificacion model or method not available for service $servicioId");
+            // Start output buffering to capture any unexpected output
+            $obLevel = ob_get_level();
+            ob_start();
+            
+            // Temporarily disable error display to prevent output
+            $originalDisplayErrors = ini_get('display_errors');
+            ini_set('display_errors', 0);
+            
+            // Set error reporting to log only
+            $originalLogErrors = ini_get('log_errors');
+            ini_set('log_errors', 1);
+            
+            // Attempt notification programming
+            $this->notificacionModel->programarNotificacionesVencimiento($servicioId);
+            
+            // Clean up - restore settings
+            ini_set('display_errors', $originalDisplayErrors);
+            ini_set('log_errors', $originalLogErrors);
+            
+            // Clean up output buffer
+            while (ob_get_level() > $obLevel) {
+                $content = ob_get_clean();
+                if (DEBUG_MODE && !empty(trim($content))) {
+                    error_log("Notification programming output for service $servicioId: " . trim($content));
                 }
             }
+            
         } catch (Exception $e) {
+            // Log error but don't let it prevent service creation success
             error_log("Error programando notificaciones para servicio $servicioId: " . $e->getMessage());
-            // Don't let notification errors prevent service creation
+            
+            // Clean up output buffer in case of error
+            while (ob_get_level() > $obLevel) {
+                ob_end_clean();
+            }
+        } catch (Error $e) {
+            // Catch fatal errors too
+            error_log("Fatal error programando notificaciones para servicio $servicioId: " . $e->getMessage());
+            
+            // Clean up output buffer in case of error
+            while (ob_get_level() > $obLevel) {
+                ob_end_clean();
+            }
         }
     }
     
