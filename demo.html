@@ -77,19 +77,20 @@
                 </div>
             </div>
             
-            <!-- Gráfica de Servicios Renovados -->
+            <!-- Gráfica de Estatus de Servicios -->
             <div class="col-xl-6 col-lg-6">
                 <div class="card shadow mb-4">
                     <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
                         <h6 class="m-0 font-weight-bold text-success">
-                            <i class="fas fa-sync me-2"></i>
-                            Servicios Renovados vs No Renovados <span class="badge bg-success">NUEVO</span>
+                            <i class="fas fa-tasks me-2"></i>
+                            Estatus de Servicios <span class="badge bg-warning">ACTUALIZADO</span>
                         </h6>
                     </div>
                     <div class="card-body">
                         <div class="chart-area">
                             <canvas id="renovacionesChart" width="100" height="40"></canvas>
                         </div>
+                        <small class="text-muted">Los servicios no renovados (vencidos) ahora se incluyen en "Pendientes"</small>
                     </div>
                 </div>
             </div>
@@ -113,6 +114,26 @@
                 </div>
             </div>
             
+            <!-- Gráfica de Nuevos Clientes por Mes -->
+            <div class="col-xl-6 col-lg-6">
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                        <h6 class="m-0 font-weight-bold text-info">
+                            <i class="fas fa-user-plus me-2"></i>
+                            Nuevos Clientes por Mes <span class="badge bg-info">NUEVO</span>
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-area">
+                            <canvas id="clientesChart"></canvas>
+                        </div>
+                        <small class="text-muted">Reemplaza la gráfica "Ingresos por Método de Pago"</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
             <!-- Funcionalidad de Perfil -->
             <div class="col-xl-6 col-lg-6">
                 <div class="card shadow mb-4">
@@ -133,6 +154,26 @@
                         <small class="text-muted mt-2 d-block">
                             Esta funcionalidad ya existía en views/profile/index.php línea 134-138
                         </small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Arreglo de Creación de Servicios -->
+            <div class="col-xl-6 col-lg-6">
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                        <h6 class="m-0 font-weight-bold text-success">
+                            <i class="fas fa-tools me-2"></i>
+                            Creación de Servicios <span class="badge bg-success">ARREGLADO</span>
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <p>Se solucionó el problema de la página en blanco al crear servicios:</p>
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-check text-success me-2"></i>Se agregaron campos email y teléfono a las consultas del modelo Servicio</li>
+                            <li><i class="fas fa-check text-success me-2"></i>Se corrigió el error en la programación de notificaciones</li>
+                            <li><i class="fas fa-check text-success me-2"></i>Los servicios ahora se crean correctamente</li>
+                        </ul>
                     </div>
                 </div>
             </div>
@@ -164,6 +205,15 @@
             {nombre: 'Dominio', cantidad: 15},
             {nombre: 'Email', cantidad: 10},
             {nombre: 'SSL', cantidad: 8}
+        ];
+
+        const clientesData = [
+            {fecha: '2024-01', cantidad: 5},
+            {fecha: '2024-02', cantidad: 8},
+            {fecha: '2024-03', cantidad: 12},
+            {fecha: '2024-04', cantidad: 7},
+            {fecha: '2024-05', cantidad: 15},
+            {fecha: '2024-06', cantidad: 18}
         ];
 
         // Gráfica de ventas por mes
@@ -268,6 +318,45 @@
                 plugins: {
                     legend: {
                         position: 'bottom'
+                    }
+                }
+            }
+        });
+
+        // Gráfica de nuevos clientes por mes
+        const ctxClientes = document.getElementById('clientesChart').getContext('2d');
+        const clientesChart = new Chart(ctxClientes, {
+            type: 'bar',
+            data: {
+                labels: clientesData.map(item => {
+                    const fecha = new Date(item.fecha + '-01');
+                    return fecha.toLocaleDateString('es-ES', { year: 'numeric', month: 'short' });
+                }),
+                datasets: [{
+                    label: 'Nuevos Clientes',
+                    data: clientesData.map(item => item.cantidad),
+                    backgroundColor: 'rgba(59, 130, 246, 0.8)',
+                    borderColor: 'rgb(59, 130, 246)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Nuevos Clientes Registrados por Mes'
+                    },
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
                     }
                 }
             }

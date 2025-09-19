@@ -33,7 +33,7 @@ class DashboardController {
         $ventasPorMes = $this->getVentasPorMes($fechaInicio, $fechaFin);
         $serviciosPorTipo = $this->getServiciosPorTipo();
         $serviciosRenovados = $this->getServiciosRenovados($fechaInicio, $fechaFin);
-        $estadisticasIngresos = $this->getEstadisticasIngresos($fechaInicio, $fechaFin);
+        $nuevosClientesPorMes = $this->getNuevosClientesPorMes($fechaInicio, $fechaFin);
         
         $data = [
             'total_clientes' => $totalClientes,
@@ -44,7 +44,7 @@ class DashboardController {
             'ventas_por_mes' => $ventasPorMes,
             'servicios_por_tipo' => $serviciosPorTipo,
             'servicios_renovados' => $serviciosRenovados,
-            'estadisticas_ingresos' => $estadisticasIngresos,
+            'nuevos_clientes_por_mes' => $nuevosClientesPorMes,
             'fecha_inicio' => $fechaInicio,
             'fecha_fin' => $fechaFin
         ];
@@ -131,13 +131,15 @@ class DashboardController {
         $stmtNuevos->execute([$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59']);
         $nuevos = $stmtNuevos->fetchColumn();
         
-        // Obtener servicios pendientes (por vencer en los próximos 30 días)
+        // Obtener servicios pendientes (incluye por vencer y no renovados)
         $stmtPendientes = $db->prepare("
             SELECT 
                 COUNT(*) as pendientes
             FROM servicios 
-            WHERE estado = 'activo' 
-            AND fecha_vencimiento BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 30 DAY)
+            WHERE (
+                (estado = 'activo' AND fecha_vencimiento BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 30 DAY))
+                OR estado = 'vencido'
+            )
         ");
         $stmtPendientes->execute();
         $pendientes = $stmtPendientes->fetchColumn();
@@ -161,6 +163,30 @@ class DashboardController {
             'fecha_inicio' => $fechaInicio,
             'fecha_fin' => $fechaFin
         ];
+    }
+    
+    private function getNuevosClientesPorMes($fechaInicio = null, $fechaFin = null) {
+        $db = Database::getInstance()->getConnection();
+        
+        // Si no se proporcionan fechas, usar últimos 12 meses
+        if (!$fechaInicio || !$fechaFin) {
+            $fechaInicio = date('Y-m-01', strtotime('-11 months'));
+            $fechaFin = date('Y-m-t'); // Último día del mes actual
+        }
+        
+        // Obtener nuevos clientes agrupados por mes
+        $stmt = $db->prepare("
+            SELECT 
+                DATE_FORMAT(fecha_registro, '%Y-%m') as fecha,
+                COUNT(*) as cantidad
+            FROM clientes 
+            WHERE fecha_registro BETWEEN ? AND ?
+            AND activo = 1
+            GROUP BY DATE_FORMAT(fecha_registro, '%Y-%m')
+            ORDER BY fecha ASC
+        ");
+        $stmt->execute([$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59']);
+        return $stmt->fetchAll();
     }
     
     private function getEstadisticasIngresos($fechaInicio = null, $fechaFin = null) {
