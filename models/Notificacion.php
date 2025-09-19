@@ -146,24 +146,13 @@ class Notificacion {
             $servicioData = $servicio->findById($servicioId);
             
             if (!$servicioData) {
-                if (DEBUG_MODE) {
-                    error_log("DEBUG: No se encontró el servicio con ID: $servicioId");
-                }
                 return false;
             }
             
-            // Debug: Verificar que tenemos email
-            if (DEBUG_MODE) {
-                error_log("DEBUG: Datos del servicio - Email: " . ($servicioData['email'] ?? 'NULL') . 
-                         ", Teléfono: " . ($servicioData['telefono'] ?? 'NULL'));
-            }
-            
             // Validar que tenemos al menos un medio de contacto
-            if (empty($servicioData['email'])) {
-                if (DEBUG_MODE) {
-                    error_log("DEBUG: Servicio sin email, no se pueden programar notificaciones de email");
-                }
-                // No fallar completamente, solo log del problema
+            if (empty($servicioData['email']) && empty($servicioData['telefono'])) {
+                error_log("Advertencia: Servicio ID $servicioId sin email ni teléfono para notificaciones");
+                return true; // No es un error crítico
             }
             
             $diasAlerta = ALERT_DAYS; // [30, 15, 7, 1]
@@ -203,9 +192,6 @@ class Notificacion {
             return true;
         } catch (Exception $e) {
             error_log("Error en programarNotificacionesVencimiento: " . $e->getMessage());
-            if (DEBUG_MODE) {
-                error_log("DEBUG: Stack trace: " . $e->getTraceAsString());
-            }
             return false;
         }
     }
