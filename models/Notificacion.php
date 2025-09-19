@@ -141,44 +141,73 @@ class Notificacion {
      * Programar notificaciones automáticas para un servicio
      */
     public function programarNotificacionesVencimiento($servicioId) {
-        $servicio = new Servicio();
-        $servicioData = $servicio->findById($servicioId);
-        
-        if (!$servicioData) return false;
-        
-        $diasAlerta = ALERT_DAYS; // [30, 15, 7, 1]
-        $fechaVencimiento = new DateTime($servicioData['fecha_vencimiento']);
-        
-        foreach ($diasAlerta as $dias) {
-            $fechaNotificacion = clone $fechaVencimiento;
-            $fechaNotificacion->sub(new DateInterval("P{$dias}D"));
+        try {
+            $servicio = new Servicio();
+            $servicioData = $servicio->findById($servicioId);
             
-            // Solo programar si la fecha no ha pasado
-            if ($fechaNotificacion > new DateTime()) {
-                // Notificación por email
-                $this->create([
-                    'servicio_id' => $servicioId,
-                    'tipo' => 'email',
-                    'asunto' => $this->generarAsunto($servicioData, $dias),
-                    'mensaje' => $this->generarMensajeEmail($servicioData, $dias),
-                    'destinatario' => $servicioData['email'],
-                    'fecha_programada' => $fechaNotificacion->format('Y-m-d H:i:s')
-                ]);
+            if (!$servicioData) {
+                if (DEBUG_MODE) {
+                    error_log("DEBUG: No se encontró el servicio con ID: $servicioId");
+                }
+                return false;
+            }
+            
+            // Debug: Verificar que tenemos email
+            if (DEBUG_MODE) {
+                error_log("DEBUG: Datos del servicio - Email: " . ($servicioData['email'] ?? 'NULL') . 
+                         ", Teléfono: " . ($servicioData['telefono'] ?? 'NULL'));
+            }
+            
+            // Validar que tenemos al menos un medio de contacto
+            if (empty($servicioData['email'])) {
+                if (DEBUG_MODE) {
+                    error_log("DEBUG: Servicio sin email, no se pueden programar notificaciones de email");
+                }
+                // No fallar completamente, solo log del problema
+            }
+            
+            $diasAlerta = ALERT_DAYS; // [30, 15, 7, 1]
+            $fechaVencimiento = new DateTime($servicioData['fecha_vencimiento']);
+            
+            foreach ($diasAlerta as $dias) {
+                $fechaNotificacion = clone $fechaVencimiento;
+                $fechaNotificacion->sub(new DateInterval("P{$dias}D"));
                 
-                // Notificación por WhatsApp (si hay teléfono)
-                if (!empty($servicioData['telefono'])) {
-                    $this->create([
-                        'servicio_id' => $servicioId,
-                        'tipo' => 'whatsapp',
-                        'mensaje' => $this->generarMensajeWhatsApp($servicioData, $dias),
-                        'destinatario' => $this->limpiarTelefono($servicioData['telefono']),
-                        'fecha_programada' => $fechaNotificacion->format('Y-m-d H:i:s')
-                    ]);
+                // Solo programar si la fecha no ha pasado
+                if ($fechaNotificacion > new DateTime()) {
+                    // Notificación por email (solo si hay email)
+                    if (!empty($servicioData['email'])) {
+                        $this->create([
+                            'servicio_id' => $servicioId,
+                            'tipo' => 'email',
+                            'asunto' => $this->generarAsunto($servicioData, $dias),
+                            'mensaje' => $this->generarMensajeEmail($servicioData, $dias),
+                            'destinatario' => $servicioData['email'],
+                            'fecha_programada' => $fechaNotificacion->format('Y-m-d H:i:s')
+                        ]);
+                    }
+                    
+                    // Notificación por WhatsApp (si hay teléfono)
+                    if (!empty($servicioData['telefono'])) {
+                        $this->create([
+                            'servicio_id' => $servicioId,
+                            'tipo' => 'whatsapp',
+                            'mensaje' => $this->generarMensajeWhatsApp($servicioData, $dias),
+                            'destinatario' => $this->limpiarTelefono($servicioData['telefono']),
+                            'fecha_programada' => $fechaNotificacion->format('Y-m-d H:i:s')
+                        ]);
+                    }
                 }
             }
+            
+            return true;
+        } catch (Exception $e) {
+            error_log("Error en programarNotificacionesVencimiento: " . $e->getMessage());
+            if (DEBUG_MODE) {
+                error_log("DEBUG: Stack trace: " . $e->getTraceAsString());
+            }
+            return false;
         }
-        
-        return true;
     }
     
     /**
@@ -241,7 +270,7 @@ class Notificacion {
         $telefono = preg_replace('/[^0-9+]/', '', $telefono);
         
         // Si no empieza con +, agregar código de país (México por defecto)
-        if (!str_starts_with($telefono, '+')) {
+        if (substr($telefono, 0, 1) !== '+') {
             $telefono = '+52' . $telefono;
         }
         

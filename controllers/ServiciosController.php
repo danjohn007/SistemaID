@@ -58,17 +58,36 @@ class ServiciosController {
                 empty($data['nombre']) || empty($data['monto'])) {
                 $error = 'Todos los campos obligatorios deben ser completados.';
             } else {
+                // Debug: Log antes de crear servicio
+                if (DEBUG_MODE) {
+                    error_log("DEBUG: Intentando crear servicio con datos: " . json_encode($data));
+                }
+                
                 if ($this->servicioModel->create($data)) {
                     // Obtener el ID del servicio recién creado
                     $servicioId = Database::getInstance()->getConnection()->lastInsertId();
                     
+                    // Debug: Log después de crear servicio
+                    if (DEBUG_MODE) {
+                        error_log("DEBUG: Servicio creado exitosamente con ID: $servicioId");
+                    }
+                    
                     // Programar notificaciones automáticas para el nuevo servicio
                     $this->programarNotificacionesServicio($servicioId);
+                    
+                    // Debug: Log antes de redireccionar
+                    if (DEBUG_MODE) {
+                        error_log("DEBUG: Redirigiendo a servicios con mensaje de éxito");
+                    }
                     
                     header('Location: ' . BASE_URL . 'servicios?success=Servicio creado exitosamente');
                     exit();
                 } else {
                     $error = 'Error al crear el servicio.';
+                    // Debug: Log error en creación
+                    if (DEBUG_MODE) {
+                        error_log("DEBUG: Error al crear el servicio en la base de datos");
+                    }
                 }
             }
         }
@@ -174,9 +193,23 @@ class ServiciosController {
      */
     private function programarNotificacionesServicio($servicioId) {
         try {
+            // Debug: Log antes de programar notificaciones
+            if (DEBUG_MODE) {
+                error_log("DEBUG: Programando notificaciones para servicio ID: $servicioId");
+            }
+            
             $this->notificacionModel->programarNotificacionesVencimiento($servicioId);
+            
+            // Debug: Log después de programar notificaciones
+            if (DEBUG_MODE) {
+                error_log("DEBUG: Notificaciones programadas exitosamente para servicio ID: $servicioId");
+            }
         } catch (Exception $e) {
             error_log("Error programando notificaciones para servicio $servicioId: " . $e->getMessage());
+            // En lugar de fallar silenciosamente, continuar con el flujo
+            if (DEBUG_MODE) {
+                error_log("DEBUG: Continuando a pesar del error en notificaciones");
+            }
         }
     }
     
