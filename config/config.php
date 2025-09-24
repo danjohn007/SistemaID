@@ -33,8 +33,8 @@ define('ALERT_DAYS', [30, 15, 7, 1]);
 // Auto-detección de URL base
 function getBaseUrl() {
     $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
-    $host = $_SERVER['HTTP_HOST'];
-    $path = dirname($_SERVER['SCRIPT_NAME']);
+    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+    $path = dirname($_SERVER['SCRIPT_NAME'] ?? '/');
     return $protocol . $host . $path . '/';
 }
 
@@ -44,7 +44,8 @@ define('BASE_URL', getBaseUrl());
 date_default_timezone_set('America/Mexico_City');
 
 // Configuración de errores para desarrollo
-if ($_SERVER['HTTP_HOST'] === 'localhost' || strpos($_SERVER['HTTP_HOST'], '127.0.0.1') !== false) {
+$httpHost = $_SERVER['HTTP_HOST'] ?? 'localhost';
+if ($httpHost === 'localhost' || strpos($httpHost, '127.0.0.1') !== false) {
     error_reporting(E_ALL);
     ini_set('display_errors', 1);
     define('DEBUG_MODE', true);
