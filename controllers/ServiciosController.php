@@ -177,6 +177,7 @@ class ServiciosController {
             $this->notificacionModel->programarNotificacionesVencimiento($servicioId);
         } catch (Exception $e) {
             error_log("Error programando notificaciones para servicio $servicioId: " . $e->getMessage());
+            // Continuar con el flujo normal aunque falle la programación de notificaciones
         }
     }
     
