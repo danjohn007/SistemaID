@@ -70,6 +70,7 @@ robots.txt.local
 # Archivos de testing
 phpunit.xml
 .phpunit.result.cache
+test_*.php
 
 # Archivos de coverage de testing
 coverage/

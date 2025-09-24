@@ -9,10 +9,15 @@ class ServiciosController {
     private $notificacionModel;
     
     public function __construct() {
-        $this->servicioModel = new Servicio();
-        $this->clienteModel = new Cliente();
-        $this->tipoServicioModel = new TipoServicio();
-        $this->notificacionModel = new Notificacion();
+        try {
+            $this->servicioModel = new Servicio();
+            $this->clienteModel = new Cliente();
+            $this->tipoServicioModel = new TipoServicio();
+            $this->notificacionModel = new Notificacion();
+        } catch (Exception $e) {
+            error_log("Error initializing ServiciosController: " . $e->getMessage());
+            throw new Exception("Error de inicialización del sistema. Por favor, contacte al administrador.");
+        }
     }
     
     public function index() {
@@ -38,8 +43,16 @@ class ServiciosController {
     
     public function nuevo() {
         $error = '';
-        $clientes = $this->clienteModel->findAll();
-        $tiposServicio = $this->tipoServicioModel->findAll();
+        $clientes = [];
+        $tiposServicio = [];
+        
+        try {
+            $clientes = $this->clienteModel->findAll();
+            $tiposServicio = $this->tipoServicioModel->findAll();
+        } catch (Exception $e) {
+            error_log("Error loading form data: " . $e->getMessage());
+            $error = 'Error al cargar los datos del formulario. Por favor, contacte al administrador.';
+        }
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $data = [

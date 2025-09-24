@@ -17,7 +17,8 @@ class Database {
             
             $this->connection = new PDO($dsn, DB_USER, DB_PASS, $options);
         } catch (PDOException $e) {
-            die("Error de conexión a la base de datos: " . $e->getMessage());
+            error_log("Database connection error: " . $e->getMessage());
+            throw new Exception("Error de conexión a la base de datos: " . $e->getMessage());
         }
     }
     

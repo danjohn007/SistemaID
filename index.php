@@ -70,43 +70,69 @@ try {
             
         case 'clientes':
             requireAuth();
-            $controller = new ClientesController();
-            switch ($subaction) {
-                case 'nuevo':
-                    $controller->nuevo();
-                    break;
-                case 'editar':
-                    $controller->editar();
-                    break;
-                case 'ver':
-                    $controller->ver();
-                    break;
-                case 'eliminar':
-                    $controller->eliminar();
-                    break;
-                default:
-                    $controller->index();
+            try {
+                $controller = new ClientesController();
+                switch ($subaction) {
+                    case 'nuevo':
+                        $controller->nuevo();
+                        break;
+                    case 'editar':
+                        $controller->editar();
+                        break;
+                    case 'ver':
+                        $controller->ver();
+                        break;
+                    case 'eliminar':
+                        $controller->eliminar();
+                        break;
+                    default:
+                        $controller->index();
+                }
+            } catch (Exception $e) {
+                error_log("Clientes Controller Error: " . $e->getMessage());
+                if (file_exists('views/errors/database_error.php')) {
+                    include 'views/errors/database_error.php';
+                } else {
+                    echo "<!DOCTYPE html><html><head><title>Error - Sistema ID</title></head><body>";
+                    echo "<h1>Error de Sistema</h1>";
+                    echo "<p>Error de conexión a la base de datos. Por favor contacte al administrador.</p>";
+                    echo "<a href='" . BASE_URL . "dashboard'>Volver al Dashboard</a>";
+                    echo "</body></html>";
+                }
             }
             break;
             
         case 'servicios':
             requireAuth();
-            $controller = new ServiciosController();
-            switch ($subaction) {
-                case 'nuevo':
-                    $controller->nuevo();
-                    break;
-                case 'editar':
-                    $controller->editar();
-                    break;
-                case 'ver':
-                    $controller->ver();
-                    break;
-                case 'eliminar':
-                    $controller->eliminar();
-                    break;
-                default:
-                    $controller->index();
+            try {
+                $controller = new ServiciosController();
+                switch ($subaction) {
+                    case 'nuevo':
+                        $controller->nuevo();
+                        break;
+                    case 'editar':
+                        $controller->editar();
+                        break;
+                    case 'ver':
+                        $controller->ver();
+                        break;
+                    case 'eliminar':
+                        $controller->eliminar();
+                        break;
+                    default:
+                        $controller->index();
+                }
+            } catch (Exception $e) {
+                error_log("Servicios Controller Error: " . $e->getMessage());
+                if (file_exists('views/errors/database_error.php')) {
+                    include 'views/errors/database_error.php';
+                } else {
+                    echo "<!DOCTYPE html><html><head><title>Error - Sistema ID</title></head><body>";
+                    echo "<h1>Error de Sistema</h1>";
+                    echo "<p>Error de conexión a la base de datos. Por favor contacte al administrador.</p>";
+                    echo "<a href='" . BASE_URL . "dashboard'>Volver al Dashboard</a>";
+                    echo "</body></html>";
+                }
             }
             break;
             
